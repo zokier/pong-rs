@@ -18,6 +18,8 @@
 extern mod glfw;
 extern mod gl;
 
+use std::libc;
+
 use std::cast;
 use std::ptr;
 use std::str;
@@ -115,6 +117,7 @@ fn main() {
         glfw::window_hint::opengl_forward_compat(true);
 
         let window = glfw::Window::create(800, 600, "OpenGL", glfw::Windowed).unwrap();
+        window.set_key_callback(key_callback);
         window.make_context_current();
 
         // Load the OpenGL function pointers
@@ -174,5 +177,11 @@ fn main() {
             gl::DeleteBuffers(1, &vbo);
             gl::DeleteVertexArrays(1, &vao);
         }
+    }
+}
+
+fn key_callback(window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers) {
+    if action == glfw::Press && key == glfw::KeyEscape {
+        window.set_should_close(true);
     }
 }
