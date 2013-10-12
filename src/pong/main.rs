@@ -39,9 +39,13 @@ static VERTEX_DATA: [GLfloat, ..8] = [
 // Shader sources
 static VS_SRC: &'static str =
    "#version 150\n\
-    in vec2 position;\n\
+    in vec2 vertex;\n\
+    uniform vec2 scale;\n\
+    uniform vec2 position;\n\
     void main() {\n\
-       gl_Position = vec4(position, 0.0, 1.0);\n\
+       vec2 out_vert = vertex * scale;\n\
+       out_vert += position;\n\
+       gl_Position = vec4(out_vert, 0.0, 1.0);\n\
     }";
 
 static FS_SRC: &'static str =
@@ -116,7 +120,7 @@ fn main() {
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
         glfw::window_hint::opengl_forward_compat(true);
 
-        let window = glfw::Window::create(800, 600, "OpenGL", glfw::Windowed).unwrap();
+        let window = glfw::Window::create(600, 600, "Pong", glfw::Windowed).unwrap();
         window.set_key_callback(key_callback);
         window.make_context_current();
 
@@ -130,8 +134,13 @@ fn main() {
 
         let mut vao = 0;
         let mut vbo = 0;
+        
+        let position_uniform: GLint;
+        let scale_uniform: GLint;
 
         unsafe {
+            position_uniform = "position".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
+            scale_uniform = "scale".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             // Create Vertex Array Object
             gl::GenVertexArrays(1, &mut vao);
             gl::BindVertexArray(vao);
@@ -148,9 +157,9 @@ fn main() {
             gl::UseProgram(program);
 
             // Specify the layout of the vertex data
-            let pos_attr = "position".with_c_str(|ptr| gl::GetAttribLocation(program, ptr));
-            gl::EnableVertexAttribArray(pos_attr as GLuint);
-            gl::VertexAttribPointer(pos_attr as GLuint, 2, gl::FLOAT,
+            let vert_attr = "vertex".with_c_str(|ptr| gl::GetAttribLocation(program, ptr));
+            gl::EnableVertexAttribArray(vert_attr as GLuint);
+            gl::VertexAttribPointer(vert_attr as GLuint, 2, gl::FLOAT,
                                     gl::FALSE as GLboolean, 0, ptr::null());
         }
 
@@ -162,6 +171,26 @@ fn main() {
             gl::ClearColor(0.3, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
+            // Set uniforms
+            gl::ProgramUniform2f(program, position_uniform, 0.8, 0.0);
+            gl::ProgramUniform2f(program, scale_uniform, 0.05, 0.2);
+            // Draw a rect from the 4 vertices
+            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+            
+            // lets draw another rect
+            
+            // Set uniforms
+            gl::ProgramUniform2f(program, position_uniform, -0.8, 0.0);
+            gl::ProgramUniform2f(program, scale_uniform, 0.05, 0.2);
+            // Draw a rect from the 4 vertices
+            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+            
+            
+            // and a cube
+            
+            // Set uniforms
+            gl::ProgramUniform2f(program, position_uniform, 0.0, 0.0);
+            gl::ProgramUniform2f(program, scale_uniform, 0.025, 0.025);
             // Draw a rect from the 4 vertices
             gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
 
