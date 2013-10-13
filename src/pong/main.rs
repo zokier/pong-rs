@@ -120,7 +120,7 @@ fn main() {
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
         glfw::window_hint::opengl_forward_compat(true);
 
-        let window = glfw::Window::create(600, 600, "Pong", glfw::Windowed).unwrap();
+        let window = glfw::Window::create(1024, 600, "Pong", glfw::Windowed).unwrap();
         window.set_key_callback(key_callback);
         window.make_context_current();
 
