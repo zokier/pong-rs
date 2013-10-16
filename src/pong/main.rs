@@ -71,7 +71,8 @@ impl Component for VertVelocity {
 
 struct Sprite {
     x_size: f64,
-    y_size: f64
+    y_size: f64,
+    color: [f64, ..4]
 }
 
 impl Component for Sprite{
@@ -235,7 +236,8 @@ impl System for PaddleCollisionSystem {
 struct RenderSystem {
     program: GLuint,
     position_uniform: GLint,
-    scale_uniform: GLint
+    scale_uniform: GLint,
+    color_uniform: GLint
 }
 
 impl System for RenderSystem {
@@ -245,6 +247,7 @@ impl System for RenderSystem {
                 // Set uniforms
                 gl::ProgramUniform2f(self.program, self.position_uniform, pos.x as f32, pos.y as f32);
                 gl::ProgramUniform2f(self.program, self.scale_uniform, sprite.x_size as f32, sprite.y_size as f32);
+                gl::ProgramUniform4f(self.program, self.color_uniform, sprite.color[0] as f32, sprite.color[1] as f32, sprite.color[2] as f32, sprite.color[3] as f32);
                 // Draw a rect from the 4 vertices
                 gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
             },
@@ -264,7 +267,7 @@ enum PaddleSide {
 }
 
 fn new_ball() -> @Components {
-    let components = @Components { position: Some(@mut Position { x: 0.5, y: 0.5 }), horiz_velocity: Some(@mut HorizVelocity { x: 0.2/60.0 }), vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.025, y_size: 0.025})};
+    let components = @Components { position: Some(@mut Position { x: 0.5, y: 0.5 }), horiz_velocity: Some(@mut HorizVelocity { x: 0.2/60.0 }), vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.025, y_size: 0.025, color: [0.3, 0.3, 0.8, 1.0]})};
     return components;
 }
 
@@ -273,7 +276,7 @@ fn new_paddle(side: PaddleSide) -> @Components {
         RIGHT => 0.8,
         LEFT => 0.2
     };
-    let components = @Components { position: Some(@mut Position { x: xpos, y: 0.5 }), horiz_velocity: None, vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.05, y_size: 0.2})};
+    let components = @Components { position: Some(@mut Position { x: xpos, y: 0.5 }), horiz_velocity: None, vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.05, y_size: 0.2, color: [xpos, 1.0-xpos, 0.3, 1.0]})};
     return components;
 }
 
@@ -385,10 +388,12 @@ fn main() {
         
         let position_uniform: GLint;
         let scale_uniform: GLint;
+        let color_uniform: GLint;
 
         unsafe {
             position_uniform = "position".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             scale_uniform = "scale".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
+            color_uniform = "color".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             // Create Vertex Array Object
             gl::GenVertexArrays(1, &mut vao);
             gl::BindVertexArray(vao);
@@ -411,7 +416,7 @@ fn main() {
                                     gl::FALSE as GLboolean, 0, ptr::null());
         }
 
-        let rs: @System = @RenderSystem {program: program, position_uniform: position_uniform, scale_uniform: scale_uniform} as @System;
+        let rs: @System = @RenderSystem {program: program, position_uniform: position_uniform, scale_uniform: scale_uniform, color_uniform: color_uniform} as @System;
         world.systems.push(rs);
 
         while !window.should_close() {
@@ -419,7 +424,7 @@ fn main() {
             glfw::poll_events();
 
             // Clear the screen to black
-            gl::ClearColor(0.3, 0.3, 0.3, 1.0);
+            gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
             // process game world
