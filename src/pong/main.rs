@@ -26,6 +26,9 @@ use std::str;
 use std::sys;
 use std::vec;
 
+use std::io;
+use std::path::PosixPath;
+
 use gl::types::*;
 
 trait Component {
@@ -282,25 +285,6 @@ static VERTEX_DATA: [GLfloat, ..8] = [
      1.0, -1.0
 ];
 
-// Shader sources
-static VS_SRC: &'static str =
-   "#version 150\n\
-    in vec2 vertex;\n\
-    uniform vec2 scale;\n\
-    uniform vec2 position;\n\
-    void main() {\n\
-       vec2 out_vert = vertex * scale;\n\
-       out_vert += position;\n\
-       gl_Position = vec4(out_vert, 0.0, 1.0);\n\
-    }";
-
-static FS_SRC: &'static str =
-   "#version 150\n\
-    out vec4 out_color;\n\
-    void main() {\n\
-       out_color = vec4(1.0, 1.0, 1.0, 1.0);\n\
-    }";
-
 #[start]
 fn start(argc: int, argv: **u8) -> int {
     std::rt::start_on_main_thread(argc, argv, main)
@@ -390,8 +374,10 @@ fn main() {
         gl::load_with(glfw::get_proc_address);
 
         // Create GLSL shaders
-        let vs = compile_shader(VS_SRC, gl::VERTEX_SHADER);
-        let fs = compile_shader(FS_SRC, gl::FRAGMENT_SHADER);
+        let vs_src = io::read_whole_file_str(&PosixPath("main.vs.glsl")).unwrap();
+        let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
+        let fs_src = io::read_whole_file_str(&PosixPath("main.fs.glsl")).unwrap();
+        let fs = compile_shader(fs_src, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs, "out_color");
 
         let mut vao = 0;
