@@ -181,7 +181,7 @@ enum PaddleSide {
 }
 
 fn new_ball() -> @Components {
-    let components = @Components {
+    @Components {
         position: Some(@mut Position { x: 2.0, y: 1.5 }),
         horiz_velocity: Some(@mut HorizVelocity { x: 1.0/60.0 }),
         vert_velocity: Some(@mut VertVelocity { y: 0.0 }),
@@ -190,8 +190,7 @@ fn new_ball() -> @Components {
             y_size: 0.05,
             color: [0.3, 0.3, 0.8, 1.0]
         })
-    };
-    return components;
+    }
 }
 
 fn new_paddle(side: PaddleSide) -> @Components {
@@ -199,7 +198,7 @@ fn new_paddle(side: PaddleSide) -> @Components {
         RIGHT => 3.9,
         LEFT => 0.1
     };
-    let components = @Components {
+    @Components {
         position: Some(@mut Position { x: xpos, y: 1.5 }),
         horiz_velocity: None,
         vert_velocity: Some(@mut VertVelocity { y: 0.0 }),
@@ -208,8 +207,7 @@ fn new_paddle(side: PaddleSide) -> @Components {
             y_size: 0.4,
             color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0]
         })
-    };
-    return components;
+    }
 }
 
 
