@@ -209,6 +209,19 @@ fn new_paddle(side: PaddleSide) -> @Components {
     }
 }
 
+fn new_background() -> @Components {
+    @Components {
+        position: Some(@mut Position { x: 2.0, y: 1.5 }),
+        horiz_velocity: None,
+        vert_velocity: None,
+        sprite: Some(@mut Sprite {
+            x_size: 4.0,
+            y_size: 3.0,
+            color: [0.0, 0.0, 0.0, 0.3]
+        })
+    }
+}
+
 
 // OPENGL ETC STUFF
 
@@ -284,11 +297,13 @@ fn main() {
         let left_paddle: @Components = new_paddle(LEFT);
         let right_paddle: @Components = new_paddle(RIGHT);
         let ball: @Components = new_ball();
+        let background: @Components = new_background();
         let ms: @System = @MovementSystem as @System;
         let es: @System = @EdgeCollisionSystem as @System;
         let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle } as @System;
 
         let mut world: World = World::new();
+        world.entities.push(background);
         world.entities.push(left_paddle);
         world.entities.push(right_paddle);
         world.entities.push(ball);
