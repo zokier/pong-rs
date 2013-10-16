@@ -90,7 +90,7 @@ impl System for EdgeCollisionSystem {
     fn process(&self, entity: @Components) -> () {
         match (entity.position, entity.vert_velocity) {
             (Some(pos), Some(vel)) => {
-                if pos.y >= 1.0 || pos.y <= 0.0 {
+                if pos.y >= 4.0 || pos.y <= 0.0 {
                     vel.y *= -1.0;
                 }
             },
