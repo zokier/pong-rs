@@ -51,7 +51,6 @@ struct Sprite {
     color: [f64, ..4]
 }
 
-static COMPONENT_COUNT: uint = 4;
 struct Components {
     position: Option<@mut Position>,
     horiz_velocity: Option<@mut HorizVelocity>,
