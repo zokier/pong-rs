@@ -102,26 +102,25 @@ impl System for EdgeCollisionSystem {
 struct PaddleCollisionSystem {
     left_paddle: @Components,
     right_paddle: @Components,
-    paddle_width: f64,
-    paddle_height: f64
 }
 
 impl System for PaddleCollisionSystem {
     fn process(&self, entity: @Components) -> () {
-        match (entity.position, entity.horiz_velocity) {
-            (Some(pos), Some(vel)) => {
-                if pos.x >= (4.0-self.paddle_width) {
-                    if std::num::abs(pos.y - self.right_paddle.position.unwrap().y) < (self.paddle_height/2.0) {
+        //TODO use a hitbox or something instead of sprite
+        match (entity.position, entity.horiz_velocity, entity.sprite) {
+            (Some(pos), Some(vel), Some(spr)) => {
+                if (pos.x+(spr.x_size)/2.0) >= (self.right_paddle.position.unwrap().x-(self.right_paddle.sprite.unwrap().x_size)/2.0) {
+                    if std::num::abs(pos.y - self.right_paddle.position.unwrap().y) < (self.right_paddle.sprite.unwrap().y_size/2.0) {
                         vel.x *= -1.0;
                     }
                 }
-                if pos.x <= self.paddle_width {
-                    if std::num::abs(pos.y - self.left_paddle.position.unwrap().y) < (self.paddle_height/2.0) {
+                if (pos.x-(spr.x_size)/2.0) <= (self.left_paddle.position.unwrap().x+(self.left_paddle.sprite.unwrap().x_size)/2.0) {
+                    if std::num::abs(pos.y - self.left_paddle.position.unwrap().y) < (self.left_paddle.sprite.unwrap().y_size/2.0) {
                         vel.x *= -1.0;
                     }
                 }
             },
-            (_, _) => ()
+            (_, _, _) => ()
         }
     }
 }
@@ -287,7 +286,7 @@ fn main() {
         let ball: @Components = new_ball();
         let ms: @System = @MovementSystem as @System;
         let es: @System = @EdgeCollisionSystem as @System;
-        let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle, paddle_height: 0.4, paddle_width: 0.1} as @System;
+        let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle } as @System;
 
         let mut world: World = World::new();
         world.entities.push(left_paddle);
