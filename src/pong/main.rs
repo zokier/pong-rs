@@ -28,6 +28,252 @@ use std::vec;
 
 use gl::types::*;
 
+trait Component {
+    // There should be some central allocation mechanism for component_ids
+    // maybe even an enum
+    // actually can we just get rid of the whole component id stuff?
+    // could we merge the two functions?
+    fn component_id(_: Option<Self>) -> uint;
+    fn struct_component_id(&self) -> uint;
+}
+
+//Do these need to be right here?
+struct Position {
+    x: f64,
+    y: f64
+}
+
+impl Component for Position {
+    fn component_id(_: Option<Position>) -> uint { 0 }
+    fn struct_component_id(&self) -> uint { 0 }
+}
+
+struct HorizVelocity {
+    x: f64
+}
+
+impl Component for HorizVelocity {
+    fn component_id(_: Option<HorizVelocity>) -> uint { 1 }
+    fn struct_component_id(&self) -> uint { 1 }
+}
+
+struct VertVelocity {
+    y: f64
+}
+
+impl Component for VertVelocity {
+    fn component_id(_: Option<VertVelocity>) -> uint { 2 }
+    fn struct_component_id(&self) -> uint { 2 }
+}
+
+struct Sprite {
+    x_size: f64,
+    y_size: f64
+}
+
+impl Component for Sprite{
+    fn component_id(_: Option<Sprite>) -> uint { 3 }
+    fn struct_component_id(&self) -> uint { 3 }
+}
+
+static COMPONENT_COUNT: uint = 4;
+struct Components {
+    position: Option<@mut Position>,
+    horiz_velocity: Option<@mut HorizVelocity>,
+    vert_velocity: Option<@mut VertVelocity>,
+    sprite: Option<@mut Sprite>
+}
+
+impl Components {
+    fn contains(&self, id: uint) -> bool
+    {
+        // we should use sizeof(Components)/sizeof(Option<@uint>) here
+        // presuming sizeof(Option<@uint>) == sizeof(Option<@Foo>)
+        // waiting for rust to get constexpr sizeof
+        unsafe {
+            let v: &[Option<@uint>, ..COMPONENT_COUNT] = std::cast::transmute::<&Components, &[Option<@uint>, ..COMPONENT_COUNT]>(self);
+            return (id < COMPONENT_COUNT) && match v[id] {
+                Some(_) => true,
+                None => false
+            }
+        }
+    }
+}
+
+// Do we need more advanced rules?
+// if not, maybe a boolean would suffice?
+enum Operator {
+    HAS,
+    HAS_NOT
+}
+
+struct Rule {
+    component_id: uint, //TODO a unique type for this?
+    operator: Operator
+}
+
+trait System {
+    fn process(&self, entity: @Components) -> ();
+    fn rules(&self) -> @[Rule];
+}
+
+// We need to figure out how to integrate World with the main game loop
+// in Artemis world has a `setDelta` method for timestep
+struct World {
+    entities: ~[@Components],
+    systems: ~[@System]
+}
+
+impl World {
+    fn new() -> World {
+        return World {entities: ~[], systems: ~[]};
+    }
+
+    fn process(&self) {
+        for system in self.systems.iter() {
+            for entity in self.entities.iter() {
+                // there is significant amount of nested iteration going on here
+                // could this be optimized somehow
+                let mut rule_matches = false;
+                for rule in system.rules().iter() {
+                    match (entity.contains(rule.component_id), rule.operator) {
+                        (true, HAS_NOT) => { rule_matches = false; break; },
+                        (false, HAS) => { rule_matches = false; break; },
+                        (false, HAS_NOT) => (),
+                        (true, HAS) => rule_matches = true
+                    }
+                }
+                if rule_matches {
+                    system.process(*entity);
+                }
+            }
+        }
+    }
+}
+
+
+struct MovementSystem;
+
+impl System for MovementSystem {
+    fn process(&self, entity: @Components) -> () {
+        match entity.position { 
+            Some(pos) => {
+                match entity.vert_velocity {
+                    Some(v) => pos.y += v.y,
+                    None => ()
+                } 
+                match entity.horiz_velocity {
+                    Some(v) => pos.x += v.x,
+                    None => ()
+                }
+            },
+            None => println!("rulecheck fail")
+        }
+    }
+
+    fn rules(&self) -> @[Rule] {
+        // TODO how to express HorizVelocity OR VertVelocity
+        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}];
+        return r;
+    }
+}
+
+struct EdgeCollisionSystem;
+
+impl System for EdgeCollisionSystem {
+    fn process(&self, entity: @Components) -> () {
+        match (entity.position, entity.vert_velocity) {
+            (Some(pos), Some(vel)) => {
+                if pos.y >= 1.0 || pos.y <= 0.0 {
+                    vel.y *= -1.0;
+                }
+            },
+            (_, _) => () //rulechecks should prevent this from ever happening!
+        }
+    }
+
+    fn rules(&self) -> @[Rule] {
+        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}, Rule{component_id: Component::component_id(None::<VertVelocity>), operator: HAS}];
+        return r;
+    }
+}
+
+struct PaddleCollisionSystem {
+    left_paddle: @Components,
+    right_paddle: @Components,
+    paddle_width: f64
+}
+
+impl System for PaddleCollisionSystem {
+    fn process(&self, entity: @Components) -> () {
+        match (entity.position, entity.horiz_velocity) {
+            (Some(pos), Some(vel)) => {
+                if pos.x >= 1.0 {
+                    if std::num::abs(pos.y - self.right_paddle.position.unwrap().y) < (self.paddle_width/2.0) {
+                        vel.x *= -1.0;
+                    }
+                }
+                if pos.x <= 0.0 {
+                    if std::num::abs(pos.y - self.left_paddle.position.unwrap().y) < (self.paddle_width/2.0) {
+                        vel.x *= -1.0;
+                    }
+                }
+            },
+            (_, _) => () //rulechecks should prevent this from ever happening!
+        }
+    }
+
+    fn rules(&self) -> @[Rule] {
+        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}, Rule{component_id: Component::component_id(None::<HorizVelocity>), operator: HAS}];
+        return r;
+    }
+}
+
+struct RenderSystem {
+    program: GLuint,
+    position_uniform: GLint,
+    scale_uniform: GLint
+}
+
+impl System for RenderSystem {
+    fn process(&self, entity: @Components) -> () {
+        match (entity.position, entity.sprite) {
+            (Some(pos), Some(sprite)) => {
+                // Set uniforms
+                gl::ProgramUniform2f(self.program, self.position_uniform, pos.x as f32, pos.y as f32);
+                gl::ProgramUniform2f(self.program, self.scale_uniform, sprite.x_size as f32, sprite.y_size as f32);
+                // Draw a rect from the 4 vertices
+                gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+            },
+            (_, _) => ()
+        }
+    }
+
+    fn rules(&self) -> @[Rule] {
+        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}, Rule{component_id: Component::component_id(None::<Sprite>), operator: HAS}];
+        return r;
+    }
+}
+
+enum PaddleSide {
+    RIGHT,
+    LEFT
+}
+
+fn new_ball() -> @Components {
+    let components = @Components { position: Some(@mut Position { x: 0.5, y: 0.5 }), horiz_velocity: Some(@mut HorizVelocity { x: 0.2/60.0 }), vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.025, y_size: 0.025})};
+    return components;
+}
+
+fn new_paddle(side: PaddleSide) -> @Components {
+    let xpos = match side {
+        RIGHT => 0.8,
+        LEFT => 0.2
+    };
+    let components = @Components { position: Some(@mut Position { x: xpos, y: 0.5 }), horiz_velocity: None, vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.05, y_size: 0.2})};
+    return components;
+}
+
 // Vertex data
 static VERTEX_DATA: [GLfloat, ..8] = [
     -1.0,  1.0,
@@ -115,6 +361,22 @@ fn main() {
     }
 
     do glfw::start {
+        // initialize game world
+        let left_paddle: @Components = new_paddle(LEFT);
+        let right_paddle: @Components = new_paddle(RIGHT);
+        let ball: @Components = new_ball();
+        let ms: @System = @MovementSystem as @System;
+        let es: @System = @EdgeCollisionSystem as @System;
+        let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle, paddle_width: 0.2} as @System;
+
+        let mut world: World = World::new();
+        world.entities.push(left_paddle);
+        world.entities.push(right_paddle);
+        world.entities.push(ball);
+        world.systems.push(ms);
+        world.systems.push(es);
+        world.systems.push(ps);
+
         // Choose a GL profile that is compatible with OS X 10.7+
         glfw::window_hint::context_version(3, 2);
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
@@ -163,6 +425,9 @@ fn main() {
                                     gl::FALSE as GLboolean, 0, ptr::null());
         }
 
+        let rs: @System = @RenderSystem {program: program, position_uniform: position_uniform, scale_uniform: scale_uniform} as @System;
+        world.systems.push(rs);
+
         while !window.should_close() {
             // Poll events
             glfw::poll_events();
@@ -171,28 +436,8 @@ fn main() {
             gl::ClearColor(0.3, 0.3, 0.3, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            // Set uniforms
-            gl::ProgramUniform2f(program, position_uniform, 0.8, 0.0);
-            gl::ProgramUniform2f(program, scale_uniform, 0.05, 0.2);
-            // Draw a rect from the 4 vertices
-            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
-            
-            // lets draw another rect
-            
-            // Set uniforms
-            gl::ProgramUniform2f(program, position_uniform, -0.8, 0.0);
-            gl::ProgramUniform2f(program, scale_uniform, 0.05, 0.2);
-            // Draw a rect from the 4 vertices
-            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
-            
-            
-            // and a cube
-            
-            // Set uniforms
-            gl::ProgramUniform2f(program, position_uniform, 0.0, 0.0);
-            gl::ProgramUniform2f(program, scale_uniform, 0.025, 0.025);
-            // Draw a rect from the 4 vertices
-            gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+            // process game world
+            world.process();
 
             // Swap buffers
             window.swap_buffers();
