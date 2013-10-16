@@ -31,7 +31,7 @@ use std::path::PosixPath;
 
 use gl::types::*;
 
-//Do these need to be right here?
+// COMPONENT DEFINITIONS
 struct Position {
     x: f64,
     y: f64
@@ -58,31 +58,11 @@ struct Components {
     sprite: Option<@mut Sprite>
 }
 
+
+// SYSTEM DEFINITIONS
 trait System {
     fn process(&self, entity: @Components) -> ();
 }
-
-// We need to figure out how to integrate World with the main game loop
-// in Artemis world has a `setDelta` method for timestep
-struct World {
-    entities: ~[@Components],
-    systems: ~[@System]
-}
-
-impl World {
-    fn new() -> World {
-        return World {entities: ~[], systems: ~[]};
-    }
-
-    fn process(&self) {
-        for system in self.systems.iter() {
-            for entity in self.entities.iter() {
-                system.process(*entity);
-            }
-        }
-    }
-}
-
 
 struct MovementSystem;
 
@@ -169,13 +149,48 @@ impl System for RenderSystem {
     }
 }
 
+
+// WORLD DEFINITION
+// We need to figure out how to integrate World with the main game loop
+// in Artemis world has a `setDelta` method for timestep
+struct World {
+    entities: ~[@Components],
+    systems: ~[@System]
+}
+
+impl World {
+    fn new() -> World {
+        return World {entities: ~[], systems: ~[]};
+    }
+
+    fn process(&self) {
+        for system in self.systems.iter() {
+            for entity in self.entities.iter() {
+                system.process(*entity);
+            }
+        }
+    }
+}
+
+
+
+//ENTITY CONSTRUCTORS
 enum PaddleSide {
     RIGHT,
     LEFT
 }
 
 fn new_ball() -> @Components {
-    let components = @Components { position: Some(@mut Position { x: 2.0, y: 1.5 }), horiz_velocity: Some(@mut HorizVelocity { x: 1.0/60.0 }), vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.05, y_size: 0.05, color: [0.3, 0.3, 0.8, 1.0]})};
+    let components = @Components {
+        position: Some(@mut Position { x: 2.0, y: 1.5 }),
+        horiz_velocity: Some(@mut HorizVelocity { x: 1.0/60.0 }),
+        vert_velocity: Some(@mut VertVelocity { y: 0.0 }),
+        sprite: Some(@mut Sprite {
+            x_size: 0.05,
+            y_size: 0.05,
+            color: [0.3, 0.3, 0.8, 1.0]
+        })
+    };
     return components;
 }
 
@@ -184,9 +199,21 @@ fn new_paddle(side: PaddleSide) -> @Components {
         RIGHT => 3.9,
         LEFT => 0.1
     };
-    let components = @Components { position: Some(@mut Position { x: xpos, y: 1.5 }), horiz_velocity: None, vert_velocity: Some(@mut VertVelocity { y: 0.0 }), sprite: Some(@mut Sprite {x_size: 0.1, y_size: 0.4, color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0]})};
+    let components = @Components {
+        position: Some(@mut Position { x: xpos, y: 1.5 }),
+        horiz_velocity: None,
+        vert_velocity: Some(@mut VertVelocity { y: 0.0 }),
+        sprite: Some(@mut Sprite {
+            x_size: 0.1,
+            y_size: 0.4,
+            color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0]
+        })
+    };
     return components;
 }
+
+
+// OPENGL ETC STUFF
 
 // Vertex data
 static VERTEX_DATA: [GLfloat, ..8] = [
