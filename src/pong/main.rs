@@ -187,7 +187,7 @@ fn new_ball() -> @Components {
         sprite: Some(@mut Sprite {
             x_size: 0.05,
             y_size: 0.05,
-            color: [0.3, 0.3, 0.8, 1.0]
+            color: [0.8, 0.7, 0.3, 1.0]
         })
     }
 }
@@ -209,6 +209,20 @@ fn new_paddle(side: PaddleSide) -> @Components {
     }
 }
 
+fn new_background_2() -> @Components {
+    @Components {
+        position: Some(@mut Position { x: 2.0, y: 1.5 }),
+        horiz_velocity: None,
+        vert_velocity: None,
+        sprite: Some(@mut Sprite {
+            x_size: 3.0,
+            y_size: 2.0,
+            color: [0.0, 0.0, 0.0, 0.3]
+        })
+    }
+}
+
+
 fn new_background() -> @Components {
     @Components {
         position: Some(@mut Position { x: 2.0, y: 1.5 }),
@@ -217,7 +231,7 @@ fn new_background() -> @Components {
         sprite: Some(@mut Sprite {
             x_size: 4.0,
             y_size: 3.0,
-            color: [0.0, 0.0, 0.0, 0.3]
+            color: [0.45, 0.4, 1.0, 1.0]
         })
     }
 }
@@ -298,12 +312,14 @@ fn main() {
         let right_paddle: @Components = new_paddle(RIGHT);
         let ball: @Components = new_ball();
         let background: @Components = new_background();
+        let background_2: @Components = new_background_2();
         let ms: @System = @MovementSystem as @System;
         let es: @System = @EdgeCollisionSystem as @System;
         let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle } as @System;
 
         let mut world: World = World::new();
         world.entities.push(background);
+        world.entities.push(background_2);
         world.entities.push(left_paddle);
         world.entities.push(right_paddle);
         world.entities.push(ball);
@@ -363,14 +379,23 @@ fn main() {
                                     gl::FALSE as GLboolean, 0, ptr::null());
         }
 
-        let rs: @System = @RenderSystem {program: program, position_uniform: position_uniform, scale_uniform: scale_uniform, color_uniform: color_uniform} as @System;
+        //enable alpha blending
+        gl::Enable(gl::BLEND);
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+
+        let rs: @System = @RenderSystem {
+            program: program,
+            position_uniform: position_uniform,
+            scale_uniform: scale_uniform,
+            color_uniform: color_uniform
+        } as @System;
         world.systems.push(rs);
 
         while !window.should_close() {
             // Poll events
             glfw::poll_events();
 
-            // Clear the screen to black
+            // Clear the screen 
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
