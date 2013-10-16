@@ -214,10 +214,10 @@ fn new_paddle(side: PaddleSide) -> @Components {
 
 // Vertex data
 static VERTEX_DATA: [GLfloat, ..8] = [
-    -1.0,  1.0,
-    -1.0, -1.0,
-     1.0,  1.0,
-     1.0, -1.0
+    -0.5,  0.5,
+    -0.5, -0.5,
+     0.5,  0.5,
+     0.5, -0.5
 ];
 
 #[start]
