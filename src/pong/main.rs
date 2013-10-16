@@ -104,21 +104,8 @@ impl Components {
     }
 }
 
-// Do we need more advanced rules?
-// if not, maybe a boolean would suffice?
-enum Operator {
-    HAS,
-    HAS_NOT
-}
-
-struct Rule {
-    component_id: uint, //TODO a unique type for this?
-    operator: Operator
-}
-
 trait System {
     fn process(&self, entity: @Components) -> ();
-    fn rules(&self) -> @[Rule];
 }
 
 // We need to figure out how to integrate World with the main game loop
@@ -136,20 +123,7 @@ impl World {
     fn process(&self) {
         for system in self.systems.iter() {
             for entity in self.entities.iter() {
-                // there is significant amount of nested iteration going on here
-                // could this be optimized somehow
-                let mut rule_matches = false;
-                for rule in system.rules().iter() {
-                    match (entity.contains(rule.component_id), rule.operator) {
-                        (true, HAS_NOT) => { rule_matches = false; break; },
-                        (false, HAS) => { rule_matches = false; break; },
-                        (false, HAS_NOT) => (),
-                        (true, HAS) => rule_matches = true
-                    }
-                }
-                if rule_matches {
-                    system.process(*entity);
-                }
+                system.process(*entity);
             }
         }
     }
@@ -171,14 +145,8 @@ impl System for MovementSystem {
                     None => ()
                 }
             },
-            None => println!("rulecheck fail")
+            None => ()
         }
-    }
-
-    fn rules(&self) -> @[Rule] {
-        // TODO how to express HorizVelocity OR VertVelocity
-        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}];
-        return r;
     }
 }
 
@@ -192,13 +160,8 @@ impl System for EdgeCollisionSystem {
                     vel.y *= -1.0;
                 }
             },
-            (_, _) => () //rulechecks should prevent this from ever happening!
+            (_, _) => () 
         }
-    }
-
-    fn rules(&self) -> @[Rule] {
-        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}, Rule{component_id: Component::component_id(None::<VertVelocity>), operator: HAS}];
-        return r;
     }
 }
 
@@ -224,13 +187,8 @@ impl System for PaddleCollisionSystem {
                     }
                 }
             },
-            (_, _) => () //rulechecks should prevent this from ever happening!
+            (_, _) => ()
         }
-    }
-
-    fn rules(&self) -> @[Rule] {
-        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}, Rule{component_id: Component::component_id(None::<HorizVelocity>), operator: HAS}];
-        return r;
     }
 }
 
@@ -254,11 +212,6 @@ impl System for RenderSystem {
             },
             (_, _) => ()
         }
-    }
-
-    fn rules(&self) -> @[Rule] {
-        let r: @[Rule] = @[Rule{component_id: Component::component_id(None::<Position>), operator: HAS}, Rule{component_id: Component::component_id(None::<Sprite>), operator: HAS}];
-        return r;
     }
 }
 
