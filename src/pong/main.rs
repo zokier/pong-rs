@@ -32,12 +32,6 @@ use std::path::PosixPath;
 use gl::types::*;
 
 trait Component {
-    // There should be some central allocation mechanism for component_ids
-    // maybe even an enum
-    // actually can we just get rid of the whole component id stuff?
-    // could we merge the two functions?
-    fn component_id(_: Option<Self>) -> uint;
-    fn struct_component_id(&self) -> uint;
 }
 
 //Do these need to be right here?
@@ -47,8 +41,6 @@ struct Position {
 }
 
 impl Component for Position {
-    fn component_id(_: Option<Position>) -> uint { 0 }
-    fn struct_component_id(&self) -> uint { 0 }
 }
 
 struct HorizVelocity {
@@ -56,8 +48,6 @@ struct HorizVelocity {
 }
 
 impl Component for HorizVelocity {
-    fn component_id(_: Option<HorizVelocity>) -> uint { 1 }
-    fn struct_component_id(&self) -> uint { 1 }
 }
 
 struct VertVelocity {
@@ -65,8 +55,6 @@ struct VertVelocity {
 }
 
 impl Component for VertVelocity {
-    fn component_id(_: Option<VertVelocity>) -> uint { 2 }
-    fn struct_component_id(&self) -> uint { 2 }
 }
 
 struct Sprite {
@@ -76,8 +64,6 @@ struct Sprite {
 }
 
 impl Component for Sprite{
-    fn component_id(_: Option<Sprite>) -> uint { 3 }
-    fn struct_component_id(&self) -> uint { 3 }
 }
 
 static COMPONENT_COUNT: uint = 4;
@@ -86,22 +72,6 @@ struct Components {
     horiz_velocity: Option<@mut HorizVelocity>,
     vert_velocity: Option<@mut VertVelocity>,
     sprite: Option<@mut Sprite>
-}
-
-impl Components {
-    fn contains(&self, id: uint) -> bool
-    {
-        // we should use sizeof(Components)/sizeof(Option<@uint>) here
-        // presuming sizeof(Option<@uint>) == sizeof(Option<@Foo>)
-        // waiting for rust to get constexpr sizeof
-        unsafe {
-            let v: &[Option<@uint>, ..COMPONENT_COUNT] = std::cast::transmute::<&Components, &[Option<@uint>, ..COMPONENT_COUNT]>(self);
-            return (id < COMPONENT_COUNT) && match v[id] {
-                Some(_) => true,
-                None => false
-            }
-        }
-    }
 }
 
 trait System {
