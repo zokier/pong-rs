@@ -31,39 +31,24 @@ use std::path::PosixPath;
 
 use gl::types::*;
 
-trait Component {
-}
-
 //Do these need to be right here?
 struct Position {
     x: f64,
     y: f64
 }
 
-impl Component for Position {
-}
-
 struct HorizVelocity {
     x: f64
-}
-
-impl Component for HorizVelocity {
 }
 
 struct VertVelocity {
     y: f64
 }
 
-impl Component for VertVelocity {
-}
-
 struct Sprite {
     x_size: f64,
     y_size: f64,
     color: [f64, ..4]
-}
-
-impl Component for Sprite{
 }
 
 static COMPONENT_COUNT: uint = 4;
