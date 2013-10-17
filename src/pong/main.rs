@@ -439,11 +439,17 @@ fn main() {
 
         let rs = @RenderSystem::new();
         gl::ProgramUniform2f(rs.program, rs.window_uniform, window_width as f32, window_height as f32);
-        /* // TODO figure out how to make this work
-        window.set_framebuffer_size_callback(|_: &glfw::Window, width: int, height: int| {
-            gl::ProgramUniform2f(rs.program, rs.window_uniform, width as f32, height as f32);
-        });
-        */
+        {
+        let program = rs.program;
+        let window_uniform = rs.window_uniform;
+        // TODO figure out how to make this work
+        window.set_framebuffer_size_callback(
+            |_: &glfw::Window, width: int, height: int| {
+                gl::ProgramUniform2f(program, window_uniform, width as f32, height as f32);
+                gl::Viewport(0,0,width as i32,height as i32);
+            }
+        );
+        }
 
         world.systems.push(rs as @System);
 
