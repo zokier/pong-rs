@@ -111,8 +111,8 @@ struct PaddleCollisionSystem {
 impl System for PaddleCollisionSystem {
     fn process(&self, entity: @Components) -> () {
         //TODO use a hitbox or something instead of sprite
-        match (entity.position, entity.horiz_velocity, entity.sprite) {
-            (Some(pos), Some(vel), Some(spr)) => {
+        match (entity.position, entity.horiz_velocity, entity.vert_velocity, entity.sprite) {
+            (Some(pos), Some(hvel), Some(vvel), Some(spr)) => {
                 let mut paddles: Option<(@Components, @Components)> = None;
                 if (pos.x+(spr.x_size)/2.0) >= (self.right_paddle.position.unwrap().x-(self.right_paddle.sprite.unwrap().x_size)/2.0) {
                     paddles = Some((self.right_paddle, self.left_paddle));
@@ -125,28 +125,22 @@ impl System for PaddleCollisionSystem {
                         let paddle_distance = pos.y - paddle_a.position.unwrap().y;
                         let paddle_height = paddle_a.sprite.unwrap().y_size/2.0;
                         if std::num::abs(paddle_distance) < paddle_height {
-                            vel.x *= -1.0;
-                            match (entity.vert_velocity) {
-                                Some(vvel) => vvel.y = vel.x*paddle_distance/paddle_height,
-                                _ => ()
-                            }
+                            hvel.x *= -1.0;
+                            vvel.y = hvel.x*paddle_distance/paddle_height;
                         }
                         else {
                             // SCORE FOR OTHER PLAYER
                             paddle_b.score.unwrap().score += 1;
                             pos.x = 2.0;
                             pos.y = 1.5;
-                            vel.x *= -1.0;
-                            match (entity.vert_velocity) {
-                                Some(vvel) => vvel.y = 0.0,
-                                _ => ()
-                            }
+                            hvel.x *= -1.0;
+                            vvel.y = 0.0;
                         }
                     },
                     None => {}
                 }
             },
-            (_, _, _) => ()
+            (_, _, _, _) => ()
         }
     }
 }
