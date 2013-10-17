@@ -442,7 +442,6 @@ fn main() {
         {
         let program = rs.program;
         let window_uniform = rs.window_uniform;
-        // TODO figure out how to make this work
         window.set_framebuffer_size_callback(
             |_: &glfw::Window, width: int, height: int| {
                 gl::ProgramUniform2f(program, window_uniform, width as f32, height as f32);
@@ -457,6 +456,8 @@ fn main() {
             // Poll events
             glfw::poll_events();
 
+            // exDM69 recommends calling glViewport at every frame for some reason
+            // glViewport(0,0, window_width, window_height);
             // Clear the screen 
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);

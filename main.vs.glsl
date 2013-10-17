@@ -10,6 +10,7 @@ uniform vec2 window;
 
 void main() {
     vec2 worldspace_size = vec2(4.0, 3.0);
+    // TODO make work when window aspect ratio < worldspace aspect ratio
     vec2 worldspace_origin = vec2(
             (0.9*window.y*worldspace_size.x/worldspace_size.y)/window.x,
             0.9) * -1.0;
