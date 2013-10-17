@@ -50,11 +50,16 @@ struct Sprite {
     color: [f64, ..4]
 }
 
+struct Score {
+    score: uint
+}
+
 struct Components {
     position: Option<@mut Position>,
     horiz_velocity: Option<@mut HorizVelocity>,
     vert_velocity: Option<@mut VertVelocity>,
-    sprite: Option<@mut Sprite>
+    sprite: Option<@mut Sprite>,
+    score: Option<@mut Score>,
 }
 
 
@@ -108,14 +113,49 @@ impl System for PaddleCollisionSystem {
         //TODO use a hitbox or something instead of sprite
         match (entity.position, entity.horiz_velocity, entity.sprite) {
             (Some(pos), Some(vel), Some(spr)) => {
+                //TODO merge left and right branches
                 if (pos.x+(spr.x_size)/2.0) >= (self.right_paddle.position.unwrap().x-(self.right_paddle.sprite.unwrap().x_size)/2.0) {
-                    if std::num::abs(pos.y - self.right_paddle.position.unwrap().y) < (self.right_paddle.sprite.unwrap().y_size/2.0) {
+                    let paddle_distance = pos.y - self.right_paddle.position.unwrap().y;
+                    let paddle_height = self.right_paddle.sprite.unwrap().y_size/2.0;
+                    if std::num::abs(paddle_distance) < paddle_height {
                         vel.x *= -1.0;
+                        match (entity.vert_velocity) {
+                            Some(vvel) => vvel.y = vel.x*paddle_distance/paddle_height,
+                            _ => ()
+                        }
                     }
-                }
-                if (pos.x-(spr.x_size)/2.0) <= (self.left_paddle.position.unwrap().x+(self.left_paddle.sprite.unwrap().x_size)/2.0) {
-                    if std::num::abs(pos.y - self.left_paddle.position.unwrap().y) < (self.left_paddle.sprite.unwrap().y_size/2.0) {
+                    else {
+                        // SCORE FOR LEFT PLAYER
+                        self.left_paddle.score.unwrap().score += 1;
+                        pos.x = 2.0;
+                        pos.y = 1.5;
                         vel.x *= -1.0;
+                        match (entity.vert_velocity) {
+                            Some(vvel) => vvel.y = 0.0,
+                            _ => ()
+                        }
+                    }
+                } 
+                else if (pos.x-(spr.x_size)/2.0) <= (self.left_paddle.position.unwrap().x+(self.left_paddle.sprite.unwrap().x_size)/2.0) {
+                    let paddle_distance = pos.y - self.left_paddle.position.unwrap().y;
+                    let paddle_height = self.left_paddle.sprite.unwrap().y_size/2.0;
+                    if std::num::abs(paddle_distance) < paddle_height {
+                        vel.x *= -1.0;
+                        match (entity.vert_velocity) {
+                            Some(vvel) => vvel.y = vel.x*paddle_distance/paddle_height,
+                            _ => ()
+                        }
+                    }
+                    else {
+                        // SCORE FOR RIGHT PLAYER
+                        self.right_paddle.score.unwrap().score += 1;
+                        pos.x = 2.0;
+                        pos.y = 1.5;
+                        vel.x *= -1.0;
+                        match (entity.vert_velocity) {
+                            Some(vvel) => vvel.y = 0.0,
+                            _ => ()
+                        }
                     }
                 }
             },
@@ -195,7 +235,8 @@ fn new_ball() -> @Components {
             x_size: 0.05,
             y_size: 0.05,
             color: [0.8, 0.7, 0.3, 1.0]
-        })
+        }),
+        score: None
     }
 }
 
@@ -212,7 +253,8 @@ fn new_paddle(side: PaddleSide) -> @Components {
             x_size: 0.1,
             y_size: 0.4,
             color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0]
-        })
+        }),
+        score: Some(@mut Score { score: 0 } )
     }
 }
 
@@ -225,7 +267,8 @@ fn new_background_2() -> @Components {
             x_size: 3.0,
             y_size: 2.0,
             color: [0.0, 0.0, 0.0, 0.3]
-        })
+        }),
+        score: None
     }
 }
 
@@ -239,7 +282,8 @@ fn new_background() -> @Components {
             x_size: 4.0,
             y_size: 3.0,
             color: [0.45, 0.4, 1.0, 1.0]
-        })
+        }),
+        score: None
     }
 }
 
@@ -472,6 +516,7 @@ fn main() {
 
         world.systems.push(rs as @System);
 
+        let mut prev_scores = (0,0);
         while !window.should_close() {
             // Poll events
             glfw::poll_events();
@@ -488,6 +533,11 @@ fn main() {
             }
             // process game world
             world.process();
+            let new_scores = (left_paddle.score.unwrap().score, right_paddle.score.unwrap().score);
+            if new_scores != prev_scores {
+                println!("{:?}", new_scores);
+                prev_scores = new_scores;
+            }
 
             // Swap buffers
             window.swap_buffers();
