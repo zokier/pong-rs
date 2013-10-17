@@ -127,9 +127,14 @@ impl System for PaddleCollisionSystem {
 
 struct RenderSystem {
     program: GLuint,
+    fs: GLuint,
+    vs: GLuint,
+    vbo: GLuint,
+    vao: GLuint,
     position_uniform: GLint,
     scale_uniform: GLint,
-    color_uniform: GLint
+    color_uniform: GLint,
+    window_uniform: GLint
 }
 
 impl System for RenderSystem {
@@ -301,46 +306,8 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
     program
 }
 
-fn main() {
-    do glfw::set_error_callback |_, description| {
-        println!("GLFW Error: {}", description);
-    }
-
-    do glfw::start {
-        // initialize game world
-        let left_paddle: @Components = new_paddle(LEFT);
-        let right_paddle: @Components = new_paddle(RIGHT);
-        let ball: @Components = new_ball();
-        let background: @Components = new_background();
-        let background_2: @Components = new_background_2();
-        let ms: @System = @MovementSystem as @System;
-        let es: @System = @EdgeCollisionSystem as @System;
-        let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle } as @System;
-
-        let mut world: World = World::new();
-        world.entities.push(background);
-        world.entities.push(background_2);
-        world.entities.push(left_paddle);
-        world.entities.push(right_paddle);
-        world.entities.push(ball);
-        world.systems.push(ms);
-        world.systems.push(es);
-        world.systems.push(ps);
-
-        // Choose a GL profile that is compatible with OS X 10.7+
-        glfw::window_hint::context_version(3, 2);
-        glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
-        glfw::window_hint::opengl_forward_compat(true);
-
-        let window_width = 800;
-        let window_height = 480;
-        let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).unwrap();
-        window.set_key_callback(key_callback);
-        window.make_context_current();
-
-        // Load the OpenGL function pointers
-        gl::load_with(glfw::get_proc_address);
-
+impl RenderSystem {
+    fn new() -> RenderSystem {
         // Create GLSL shaders
         let vs_src = io::read_whole_file_str(&PosixPath("main.vs.glsl")).unwrap();
         let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
@@ -382,22 +349,86 @@ fn main() {
             gl::VertexAttribPointer(vert_attr as GLuint, 2, gl::FLOAT,
                                     gl::FALSE as GLboolean, 0, ptr::null());
         }
-        gl::ProgramUniform2f(program, window_uniform, window_width as f32, window_height as f32);
-        window.set_framebuffer_size_callback(|_: &glfw::Window, width: int, height: int| {
-            gl::ProgramUniform2f(program, window_uniform, width as f32, height as f32);
-        });
-
         //enable alpha blending
         gl::Enable(gl::BLEND);
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-
-        let rs: @System = @RenderSystem {
+        RenderSystem {
             program: program,
+            fs: fs,
+            vs: vs,
+            vbo: vbo,
+            vao: vao,
             position_uniform: position_uniform,
             scale_uniform: scale_uniform,
-            color_uniform: color_uniform
-        } as @System;
-        world.systems.push(rs);
+            color_uniform: color_uniform,
+            window_uniform: window_uniform
+        }
+    }
+}
+
+impl Drop for RenderSystem {
+    fn drop(&mut self) {
+        // Cleanup
+        gl::DeleteProgram(self.program);
+        gl::DeleteShader(self.fs);
+        gl::DeleteShader(self.vs);
+        unsafe {
+            gl::DeleteBuffers(1, &self.vbo);
+            gl::DeleteVertexArrays(1, &self.vao);
+        }
+    }
+}
+
+fn main() {
+    do glfw::set_error_callback |_, description| {
+        println!("GLFW Error: {}", description);
+    }
+
+    do glfw::start {
+        // initialize game world
+        let left_paddle: @Components = new_paddle(LEFT);
+        let right_paddle: @Components = new_paddle(RIGHT);
+        let ball: @Components = new_ball();
+        let background: @Components = new_background();
+        let background_2: @Components = new_background_2();
+        let ms: @System = @MovementSystem as @System;
+        let es: @System = @EdgeCollisionSystem as @System;
+        let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle } as @System;
+
+        let mut world: World = World::new();
+        world.entities.push(background);
+        world.entities.push(background_2);
+        world.entities.push(left_paddle);
+        world.entities.push(right_paddle);
+        world.entities.push(ball);
+        world.systems.push(ms);
+        world.systems.push(es);
+        world.systems.push(ps);
+
+        // Choose a GL profile that is compatible with OS X 10.7+
+        glfw::window_hint::context_version(3, 2);
+        glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
+        glfw::window_hint::opengl_forward_compat(true);
+
+        let window_width = 800;
+        let window_height = 480;
+        let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).unwrap();
+        window.set_key_callback(key_callback);
+        window.make_context_current();
+
+        // Load the OpenGL function pointers
+        gl::load_with(glfw::get_proc_address);
+
+
+        let rs = @RenderSystem::new();
+        gl::ProgramUniform2f(rs.program, rs.window_uniform, window_width as f32, window_height as f32);
+        /* // TODO figure out how to make this work
+        window.set_framebuffer_size_callback(|_: &glfw::Window, width: int, height: int| {
+            gl::ProgramUniform2f(rs.program, rs.window_uniform, width as f32, height as f32);
+        });
+        */
+
+        world.systems.push(rs as @System);
 
         while !window.should_close() {
             // Poll events
@@ -412,15 +443,6 @@ fn main() {
 
             // Swap buffers
             window.swap_buffers();
-        }
-
-        // Cleanup
-        gl::DeleteProgram(program);
-        gl::DeleteShader(fs);
-        gl::DeleteShader(vs);
-        unsafe {
-            gl::DeleteBuffers(1, &vbo);
-            gl::DeleteVertexArrays(1, &vao);
         }
     }
 }
