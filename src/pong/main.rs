@@ -113,50 +113,37 @@ impl System for PaddleCollisionSystem {
         //TODO use a hitbox or something instead of sprite
         match (entity.position, entity.horiz_velocity, entity.sprite) {
             (Some(pos), Some(vel), Some(spr)) => {
-                //TODO merge left and right branches
+                let mut paddles: Option<(@Components, @Components)> = None;
                 if (pos.x+(spr.x_size)/2.0) >= (self.right_paddle.position.unwrap().x-(self.right_paddle.sprite.unwrap().x_size)/2.0) {
-                    let paddle_distance = pos.y - self.right_paddle.position.unwrap().y;
-                    let paddle_height = self.right_paddle.sprite.unwrap().y_size/2.0;
-                    if std::num::abs(paddle_distance) < paddle_height {
-                        vel.x *= -1.0;
-                        match (entity.vert_velocity) {
-                            Some(vvel) => vvel.y = vel.x*paddle_distance/paddle_height,
-                            _ => ()
-                        }
-                    }
-                    else {
-                        // SCORE FOR LEFT PLAYER
-                        self.left_paddle.score.unwrap().score += 1;
-                        pos.x = 2.0;
-                        pos.y = 1.5;
-                        vel.x *= -1.0;
-                        match (entity.vert_velocity) {
-                            Some(vvel) => vvel.y = 0.0,
-                            _ => ()
-                        }
-                    }
+                    paddles = Some((self.right_paddle, self.left_paddle));
                 } 
                 else if (pos.x-(spr.x_size)/2.0) <= (self.left_paddle.position.unwrap().x+(self.left_paddle.sprite.unwrap().x_size)/2.0) {
-                    let paddle_distance = pos.y - self.left_paddle.position.unwrap().y;
-                    let paddle_height = self.left_paddle.sprite.unwrap().y_size/2.0;
-                    if std::num::abs(paddle_distance) < paddle_height {
-                        vel.x *= -1.0;
-                        match (entity.vert_velocity) {
-                            Some(vvel) => vvel.y = vel.x*paddle_distance/paddle_height,
-                            _ => ()
+                    paddles = Some((self.left_paddle, self.right_paddle));
+                }
+                match paddles {
+                    Some((paddle_a, paddle_b)) => {
+                        let paddle_distance = pos.y - paddle_a.position.unwrap().y;
+                        let paddle_height = paddle_a.sprite.unwrap().y_size/2.0;
+                        if std::num::abs(paddle_distance) < paddle_height {
+                            vel.x *= -1.0;
+                            match (entity.vert_velocity) {
+                                Some(vvel) => vvel.y = vel.x*paddle_distance/paddle_height,
+                                _ => ()
+                            }
                         }
-                    }
-                    else {
-                        // SCORE FOR RIGHT PLAYER
-                        self.right_paddle.score.unwrap().score += 1;
-                        pos.x = 2.0;
-                        pos.y = 1.5;
-                        vel.x *= -1.0;
-                        match (entity.vert_velocity) {
-                            Some(vvel) => vvel.y = 0.0,
-                            _ => ()
+                        else {
+                            // SCORE FOR OTHER PLAYER
+                            paddle_b.score.unwrap().score += 1;
+                            pos.x = 2.0;
+                            pos.y = 1.5;
+                            vel.x *= -1.0;
+                            match (entity.vert_velocity) {
+                                Some(vvel) => vvel.y = 0.0,
+                                _ => ()
+                            }
                         }
-                    }
+                    },
+                    None => {}
                 }
             },
             (_, _, _) => ()
