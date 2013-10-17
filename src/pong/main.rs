@@ -391,9 +391,9 @@ fn main() {
         let ball: @Components = new_ball();
         let background: @Components = new_background();
         let background_2: @Components = new_background_2();
-        let ms: @System = @MovementSystem as @System;
-        let es: @System = @EdgeCollisionSystem as @System;
-        let ps: @System = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle } as @System;
+        let ms = @MovementSystem;
+        let es = @EdgeCollisionSystem;
+        let ps = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle };
 
         let mut world: World = World::new();
         world.entities.push(background);
@@ -401,9 +401,9 @@ fn main() {
         world.entities.push(left_paddle);
         world.entities.push(right_paddle);
         world.entities.push(ball);
-        world.systems.push(ms);
-        world.systems.push(es);
-        world.systems.push(ps);
+        world.systems.push(ms as @System);
+        world.systems.push(es as @System);
+        world.systems.push(ps as @System);
 
         // Choose a GL profile that is compatible with OS X 10.7+
         glfw::window_hint::context_version(3, 2);
