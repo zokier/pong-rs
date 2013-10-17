@@ -27,7 +27,6 @@ use std::sys;
 use std::vec;
 
 use std::io;
-use std::path;
 
 use gl::types::*;
 
