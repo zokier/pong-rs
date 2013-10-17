@@ -471,8 +471,13 @@ fn main() {
 }
 
 fn key_callback(window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers) {
-    if action == glfw::Press && key == glfw::KeyEscape {
-        window.set_should_close(true);
+    if action == glfw::Press {
+        match key {
+            glfw::KeyEscape => {
+                window.set_should_close(true);
+            },
+            _ => {}
+        }
     }
 }
 
