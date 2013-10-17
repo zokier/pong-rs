@@ -332,8 +332,8 @@ fn main() {
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
         glfw::window_hint::opengl_forward_compat(true);
 
-        let window_width = 1024;
-        let window_height = 600;
+        let window_width = 800;
+        let window_height = 480;
         let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).unwrap();
         window.set_key_callback(key_callback);
         window.make_context_current();
@@ -354,13 +354,13 @@ fn main() {
         let position_uniform: GLint;
         let scale_uniform: GLint;
         let color_uniform: GLint;
+        let window_uniform: GLint;
 
         unsafe {
             position_uniform = "position".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             scale_uniform = "scale".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             color_uniform = "color".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
-            let window_uniform = "window".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
-            gl::ProgramUniform2f(program, window_uniform, window_width as f32, window_height as f32);
+            window_uniform = "window".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             // Create Vertex Array Object
             gl::GenVertexArrays(1, &mut vao);
             gl::BindVertexArray(vao);
@@ -382,6 +382,10 @@ fn main() {
             gl::VertexAttribPointer(vert_attr as GLuint, 2, gl::FLOAT,
                                     gl::FALSE as GLboolean, 0, ptr::null());
         }
+        gl::ProgramUniform2f(program, window_uniform, window_width as f32, window_height as f32);
+        window.set_framebuffer_size_callback(|_: &glfw::Window, width: int, height: int| {
+            gl::ProgramUniform2f(program, window_uniform, width as f32, height as f32);
+        });
 
         //enable alpha blending
         gl::Enable(gl::BLEND);
@@ -426,3 +430,4 @@ fn key_callback(window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: g
         window.set_should_close(true);
     }
 }
+
