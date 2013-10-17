@@ -430,7 +430,27 @@ fn main() {
         let window_width = 800;
         let window_height = 480;
         let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).unwrap();
-        window.set_key_callback(key_callback);
+        let (key_port, key_chan): (Port<int>, Chan<int>) = std::comm::stream();
+        window.set_key_callback(
+            |window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers| {
+                // TODO handle releases too
+                // albeit the game is bit more interesting this way
+                if action == glfw::Press {
+                    match key {
+                        glfw::KeyEscape => {
+                            window.set_should_close(true);
+                        },
+                        glfw::KeyA => {
+                            key_chan.send(1);
+                        },
+                        glfw::KeyZ => {
+                            key_chan.send(-1);
+                        },
+                        _ => {}
+                    }
+                }
+            }
+        );
         window.make_context_current();
 
         // Load the OpenGL function pointers
@@ -462,6 +482,10 @@ fn main() {
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
+            while key_port.peek() {
+                let dir = key_port.recv();
+                left_paddle.vert_velocity.unwrap().y = (dir as f64) * 0.03;
+            }
             // process game world
             world.process();
 
@@ -470,15 +494,3 @@ fn main() {
         }
     }
 }
-
-fn key_callback(window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers) {
-    if action == glfw::Press {
-        match key {
-            glfw::KeyEscape => {
-                window.set_should_close(true);
-            },
-            _ => {}
-        }
-    }
-}
-
