@@ -129,6 +129,7 @@ struct RenderSystem {
     fs: GLuint,
     vs: GLuint,
     vbo: GLuint,
+    ebo: GLuint,
     vao: GLuint,
     position_uniform: GLint,
     scale_uniform: GLint,
@@ -145,7 +146,9 @@ impl System for RenderSystem {
                 gl::ProgramUniform2f(self.program, self.scale_uniform, sprite.x_size as f32, sprite.y_size as f32);
                 gl::ProgramUniform4f(self.program, self.color_uniform, sprite.color[0] as f32, sprite.color[1] as f32, sprite.color[2] as f32, sprite.color[3] as f32);
                 // Draw a rect from the 4 vertices
-                gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+                unsafe {
+                    gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
+                }
             },
             (_, _) => ()
         }
@@ -251,6 +254,11 @@ static VERTEX_DATA: [GLfloat, ..8] = [
      0.5, -0.5
 ];
 
+static VERTEX_INDICES: [GLuint, ..6] = [
+    0, 1, 2,
+    1, 2, 3
+];
+
 #[start]
 fn start(argc: int, argv: **u8) -> int {
     std::rt::start_on_main_thread(argc, argv, main)
@@ -316,6 +324,7 @@ impl RenderSystem {
 
         let mut vao = 0;
         let mut vbo = 0;
+        let mut ebo = 0;
         
         let position_uniform: GLint;
         let scale_uniform: GLint;
@@ -339,6 +348,13 @@ impl RenderSystem {
                            cast::transmute(&VERTEX_DATA[0]),
                            gl::STATIC_DRAW);
 
+            gl::GenBuffers(1, &mut ebo);
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ebo);
+            gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
+                           (VERTEX_INDICES.len() * sys::size_of::<GLuint>()) as GLsizeiptr,
+                           cast::transmute(&VERTEX_INDICES[0]),
+                           gl::STATIC_DRAW);
+
             // Use shader program
             gl::UseProgram(program);
 
@@ -356,6 +372,7 @@ impl RenderSystem {
             fs: fs,
             vs: vs,
             vbo: vbo,
+            ebo: ebo,
             vao: vao,
             position_uniform: position_uniform,
             scale_uniform: scale_uniform,
@@ -372,6 +389,7 @@ impl Drop for RenderSystem {
         gl::DeleteShader(self.fs);
         gl::DeleteShader(self.vs);
         unsafe {
+            gl::DeleteBuffers(1, &self.ebo);
             gl::DeleteBuffers(1, &self.vbo);
             gl::DeleteVertexArrays(1, &self.vao);
         }
