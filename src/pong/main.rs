@@ -92,13 +92,13 @@ struct EdgeCollisionSystem;
 
 impl System for EdgeCollisionSystem {
     fn process(&self, entity: @Components) -> () {
-        match (entity.position, entity.vert_velocity) {
-            (Some(pos), Some(vel)) => {
-                if pos.y >= 4.0 || pos.y <= 0.0 {
+        match (entity.position, entity.vert_velocity, entity.sprite) {
+            (Some(pos), Some(vel), Some(spr)) => {
+                if (pos.y + (spr.y_size/2.0)) >= 3.0 || (pos.y - (spr.y_size/2.0)) <= 0.0 {
                     vel.y *= -1.0;
                 }
             },
-            (_, _) => () 
+            (_, _, _) => () 
         }
     }
 }
