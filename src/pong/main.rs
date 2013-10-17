@@ -27,7 +27,7 @@ use std::sys;
 use std::vec;
 
 use std::io;
-use std::path::PosixPath;
+use std::path;
 
 use gl::types::*;
 
@@ -309,9 +309,9 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
 impl RenderSystem {
     fn new() -> RenderSystem {
         // Create GLSL shaders
-        let vs_src = io::read_whole_file_str(&PosixPath("main.vs.glsl")).unwrap();
+        let vs_src = io::read_whole_file_str(&std::path::Path::new("main.vs.glsl")).unwrap();
         let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
-        let fs_src = io::read_whole_file_str(&PosixPath("main.fs.glsl")).unwrap();
+        let fs_src = io::read_whole_file_str(&std::path::Path::new("main.fs.glsl")).unwrap();
         let fs = compile_shader(fs_src, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs, "out_color");
 
