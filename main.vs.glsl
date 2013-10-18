@@ -2,7 +2,9 @@
 
 in vec2 vertex;
 out vec4 vert_color;
+out vec2 vert_texcoords;
 
+uniform vec4 texcoords;
 uniform vec4 color;
 uniform vec2 scale;
 uniform vec2 position;
@@ -21,5 +23,7 @@ void main() {
     out_vert += worldspace_origin;
     gl_Position = vec4(out_vert, 0.0, 1.0);
     vert_color = color;
+    //this is the hackiest thing in a long time
+    vert_texcoords = vec2(texcoords.x + (texcoords.z*(vertex.x + 0.5)), texcoords.y + (texcoords.w*(vertex.y + 0.5)));
 }
 

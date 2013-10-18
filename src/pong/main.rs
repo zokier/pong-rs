@@ -44,10 +44,19 @@ struct VertVelocity {
     y: f64
 }
 
+struct SpriteTexture {
+    texture: uint,
+    texcoords: (uint, uint),
+    texsize: (uint, uint)
+}
+
 struct Sprite {
     x_size: f64,
     y_size: f64,
-    color: [f64, ..4]
+    //instead of color+texture we should have something like material
+    //which could be eg enum
+    color: [f64, ..4],
+    texture: Option<SpriteTexture>
 }
 
 struct Score {
@@ -201,7 +210,9 @@ struct RenderSystem {
     position_uniform: GLint,
     scale_uniform: GLint,
     color_uniform: GLint,
-    window_uniform: GLint
+    window_uniform: GLint,
+    texcoords_uniform: GLint,
+    char_atlas_tex: GLuint
 }
 
 impl System for RenderSystem {
@@ -211,7 +222,17 @@ impl System for RenderSystem {
                 // Set uniforms
                 gl::ProgramUniform2f(self.program, self.position_uniform, pos.x as f32, pos.y as f32);
                 gl::ProgramUniform2f(self.program, self.scale_uniform, sprite.x_size as f32, sprite.y_size as f32);
+                //gl::ProgramUniform4fv would probably work for color
                 gl::ProgramUniform4f(self.program, self.color_uniform, sprite.color[0] as f32, sprite.color[1] as f32, sprite.color[2] as f32, sprite.color[3] as f32);
+                match sprite.texture {
+                    Some(tex) => {
+                        //gl::BindTexture(GL_TEXTURE_2D, tex.texture);
+                        let (tex_x, tex_y) = tex.texcoords;
+                        let (tex_w, tex_h) = tex.texsize;
+                        gl::ProgramUniform4f(self.program, self.texcoords_uniform, tex_x as f32, tex_y as f32, tex_w as f32, tex_h as f32);
+                    },
+                    None => {}
+                }
                 // Draw a rect from the 4 vertices
                 gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
             },
@@ -262,8 +283,14 @@ fn new_ball() -> @Components {
         vert_velocity: Some(@mut VertVelocity { y: 0.0 }),
         sprite: Some(@mut Sprite {
             x_size: 0.05,
-            y_size: 0.05,
-            color: [0.8, 0.7, 0.3, 1.0]
+            y_size: 0.10,
+            color: [0.8, 0.7, 0.3, 0.0],
+            texture: Some(SpriteTexture {
+                texture: 0,
+                //there should be some better way to define these
+                texcoords: (0, 28),
+                texsize: (7, 14)
+            })
         }),
         score: None
     }
@@ -281,7 +308,8 @@ fn new_paddle(side: PaddleSide) -> @Components {
         sprite: Some(@mut Sprite {
             x_size: 0.1,
             y_size: 0.4,
-            color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0]
+            color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0],
+            texture: None
         }),
         score: Some(@mut Score { score: 0 } )
     }
@@ -295,7 +323,8 @@ fn new_background_2() -> @Components {
         sprite: Some(@mut Sprite {
             x_size: 3.0,
             y_size: 2.0,
-            color: [0.0, 0.0, 0.0, 0.3]
+            color: [0.0, 0.0, 0.0, 0.3],
+            texture: None
         }),
         score: None
     }
@@ -310,7 +339,8 @@ fn new_background() -> @Components {
         sprite: Some(@mut Sprite {
             x_size: 4.0,
             y_size: 3.0,
-            color: [0.45, 0.4, 1.0, 1.0]
+            color: [0.45, 0.4, 1.0, 1.0],
+            texture: None
         }),
         score: None
     }
@@ -399,12 +429,14 @@ impl RenderSystem {
         let scale_uniform: GLint;
         let color_uniform: GLint;
         let window_uniform: GLint;
+        let texcoords_uniform: GLint;
 
         unsafe {
             position_uniform = "position".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             scale_uniform = "scale".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             color_uniform = "color".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             window_uniform = "window".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
+            texcoords_uniform = "texcoords".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             // Create Vertex Array Object
             gl::GenVertexArrays(1, &mut vao);
             gl::BindVertexArray(vao);
@@ -429,6 +461,17 @@ impl RenderSystem {
         //enable alpha blending
         gl::Enable(gl::BLEND);
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+
+        //load character atlas texture
+        let char_atlas_src = io::read_whole_file(&std::path::Path::new("dina_128x128.gray")).unwrap();
+        let mut char_atlas_tex: GLuint = 0;
+        unsafe {
+            gl::GenTextures(1, &mut char_atlas_tex);
+            gl::ActiveTexture(gl::TEXTURE0);
+            gl::BindTexture(gl::TEXTURE_RECTANGLE, char_atlas_tex);
+            gl::TexImage2D(gl::TEXTURE_RECTANGLE, 0, gl::RED as GLint, 128, 128, 0, gl::RED, gl::UNSIGNED_BYTE, cast::transmute(&char_atlas_src[0]));
+        }
+
         RenderSystem {
             program: program,
             fs: fs,
@@ -438,7 +481,9 @@ impl RenderSystem {
             position_uniform: position_uniform,
             scale_uniform: scale_uniform,
             color_uniform: color_uniform,
-            window_uniform: window_uniform
+            window_uniform: window_uniform,
+            texcoords_uniform: texcoords_uniform,
+            char_atlas_tex: char_atlas_tex
         }
     }
 }
@@ -452,6 +497,7 @@ impl Drop for RenderSystem {
         unsafe {
             gl::DeleteBuffers(1, &self.vbo);
             gl::DeleteVertexArrays(1, &self.vao);
+            gl::DeleteTextures(1, &self.char_atlas_tex);
         }
     }
 }
