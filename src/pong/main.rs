@@ -130,7 +130,7 @@ impl System for PaddleCollisionSystem {
                         let paddle_height = paddle_a.sprite.unwrap().y_size/2.0;
                         if std::num::abs(paddle_distance) < paddle_height {
                             hvel.x *= -1.0;
-                            vvel.y = hvel.x*paddle_distance/paddle_height;
+                            vvel.y = 0.5*hvel.x*std::num::sinh(3.14*paddle_distance/paddle_height);
                         }
                         else {
                             // SCORE FOR OTHER PLAYER
@@ -493,7 +493,7 @@ fn main() {
             if window.get_key(glfw::KeyZ) == glfw::Press {
                 dir -= 1.0;
             }
-            left_paddle.vert_velocity.unwrap().y = dir*0.03;
+            left_paddle.vert_velocity.unwrap().y = 1.5*dir/60.0;
             }
             // process game world
             world.process();
