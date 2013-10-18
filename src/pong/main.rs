@@ -23,7 +23,6 @@ use std::libc;
 use std::cast;
 use std::ptr;
 use std::str;
-use std::sys;
 use std::vec;
 
 use std::io;
@@ -360,7 +359,7 @@ impl RenderSystem {
             gl::GenBuffers(1, &mut vbo);
             gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
             gl::BufferData(gl::ARRAY_BUFFER,
-                           (VERTEX_DATA.len() * sys::size_of::<GLfloat>()) as GLsizeiptr,
+                           (VERTEX_DATA.len() * std::mem::size_of::<GLfloat>()) as GLsizeiptr,
                            cast::transmute(&VERTEX_DATA[0]),
                            gl::STATIC_DRAW);
 
