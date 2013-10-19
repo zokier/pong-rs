@@ -467,7 +467,7 @@ fn main() {
 
         let window_width = 800;
         let window_height = 480;
-        let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).unwrap();
+        let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).expect("Failed to create GLFW window.");;
         window.set_key_callback(
             |window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers| {
                 if action == glfw::Press {
