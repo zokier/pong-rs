@@ -62,6 +62,29 @@ struct Components {
 }
 
 
+//GLOBAL SYSTEM DEFINITIONS
+trait GlobalSystem {
+    fn process(&self, window: &glfw::Window) -> ();
+}
+
+
+struct KeyboardInputSystem {
+    paddle: @Components
+}
+
+impl GlobalSystem for KeyboardInputSystem {
+    fn process(&self, window: &glfw::Window) -> () {
+        let mut dir = 0.0;
+        if window.get_key(glfw::KeyA) == glfw::Press {
+            dir += 1.0;
+        }
+        if window.get_key(glfw::KeyZ) == glfw::Press {
+            dir -= 1.0;
+        }
+        self.paddle.vert_velocity.unwrap().y = 1.5*dir/60.0;
+    }
+}
+
 // SYSTEM DEFINITIONS
 trait System {
     fn process(&self, entity: @Components) -> ();
@@ -183,15 +206,19 @@ impl System for RenderSystem {
 // in Artemis world has a `setDelta` method for timestep
 struct World {
     entities: ~[@Components],
-    systems: ~[@System]
+    systems: ~[@System],
+    global_systems: ~[@GlobalSystem]
 }
 
 impl World {
     fn new() -> World {
-        return World {entities: ~[], systems: ~[]};
+        return World {entities: ~[], systems: ~[], global_systems: ~[]};
     }
 
-    fn process(&self) {
+    fn process(&self, window: &glfw::Window) {
+        for system in self.global_systems.iter() {
+            system.process(window);
+        }
         for system in self.systems.iter() {
             for entity in self.entities.iter() {
                 system.process(*entity);
@@ -474,6 +501,9 @@ fn main() {
 
         world.systems.push(rs as @System);
 
+        let kbs = @KeyboardInputSystem { paddle: left_paddle };
+        world.global_systems.push(kbs as @GlobalSystem);
+
         let mut prev_scores = (0,0);
         while !window.should_close() {
             // Poll events
@@ -485,18 +515,8 @@ fn main() {
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
-            {
-            let mut dir = 0.0;
-            if window.get_key(glfw::KeyA) == glfw::Press {
-                dir += 1.0;
-            }
-            if window.get_key(glfw::KeyZ) == glfw::Press {
-                dir -= 1.0;
-            }
-            left_paddle.vert_velocity.unwrap().y = 1.5*dir/60.0;
-            }
             // process game world
-            world.process();
+            world.process(&window);
             let new_scores = (left_paddle.score.unwrap().score, right_paddle.score.unwrap().score);
             if new_scores != prev_scores {
                 println!("{:?}", new_scores);
