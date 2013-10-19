@@ -67,6 +67,20 @@ trait GlobalSystem {
     fn process(&self, window: &glfw::Window) -> ();
 }
 
+struct BotInputSystem {
+    paddle: @Components,
+    ball: @Components
+}
+
+impl GlobalSystem for BotInputSystem {
+    fn process(&self, window: &glfw::Window) -> () {
+        if (self.ball.position.unwrap().y - self.paddle.position.unwrap().y) < 0.0 {
+            self.paddle.vert_velocity.unwrap().y = 1.5/60.0;
+        } else {
+            self.paddle.vert_velocity.unwrap().y = -1.5/60.0;
+        }
+    }
+}
 
 struct KeyboardInputSystem {
     paddle: @Components
@@ -503,6 +517,9 @@ fn main() {
 
         let kbs = @KeyboardInputSystem { paddle: left_paddle };
         world.global_systems.push(kbs as @GlobalSystem);
+
+        let bis = @BotInputSystem { paddle: right_paddle, ball: ball };
+        world.global_systems.push(bis as @GlobalSystem);
 
         let mut prev_scores = (0,0);
         while !window.should_close() {
