@@ -14,6 +14,7 @@
 
 #[feature(globs)];
 #[feature(macro_rules)];
+#[feature(managed_boxes)]; //TODO do without managed boxes
 
 extern mod glfw;
 extern mod gl;
@@ -25,7 +26,7 @@ use std::ptr;
 use std::str;
 use std::vec;
 
-use std::io;
+use std::rt::io::extensions::ReaderUtil;
 
 use gl::types::*;
 
@@ -326,11 +327,13 @@ fn start(argc: int, argv: **u8) -> int {
     std::rt::start_on_main_thread(argc, argv, main)
 }
 
-fn compile_shader(src: &str, ty: GLenum) -> GLuint {
+fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
     let shader = gl::CreateShader(ty);
     unsafe {
         // Attempt to compile the shader
-        src.with_c_str(|ptr| gl::ShaderSource(shader, 1, &ptr, ptr::null()));
+        //transmute is used here because `as` causes ICE
+        //wait a sec, is `src` null-terminated properly?
+        gl::ShaderSource(shader, 1, std::cast::transmute(std::ptr::to_unsafe_ptr(&std::vec::raw::to_ptr(src))), ptr::null());
         gl::CompileShader(shader);
 
         // Get the compile status
@@ -378,9 +381,9 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
 impl RenderSystem {
     fn new() -> RenderSystem {
         // Create GLSL shaders
-        let vs_src = io::read_whole_file_str(&std::path::Path::new("main.vs.glsl")).unwrap();
+        let vs_src = std::rt::io::file::open(&std::path::Path::new("main.vs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
         let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
-        let fs_src = io::read_whole_file_str(&std::path::Path::new("main.fs.glsl")).unwrap();
+        let fs_src = std::rt::io::file::open(&std::path::Path::new("main.fs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
         let fs = compile_shader(fs_src, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs, "out_color");
 
