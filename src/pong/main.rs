@@ -75,7 +75,7 @@ struct BotInputSystem {
 
 impl GlobalSystem for BotInputSystem {
     fn process(&self, window: &glfw::Window) -> () {
-        if (self.ball.position.unwrap().y - self.paddle.position.unwrap().y) < 0.0 {
+        if (self.ball.position.unwrap().y - self.paddle.position.unwrap().y) > 0.0 {
             self.paddle.vert_velocity.unwrap().y = 1.5/60.0;
         } else {
             self.paddle.vert_velocity.unwrap().y = -1.5/60.0;
