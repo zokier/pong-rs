@@ -26,7 +26,7 @@ use std::ptr;
 use std::str;
 use std::vec;
 
-use std::rt::io::extensions::ReaderUtil;
+use std::rt::io::Reader;
 
 use gl::types::*;
 
