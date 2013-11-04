@@ -482,8 +482,8 @@ fn main() {
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
         glfw::window_hint::opengl_forward_compat(true);
 
-        let window_width = 800;
-        let window_height = 480;
+        let mut window_width = 800;
+        let mut window_height = 480;
         let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).expect("Failed to create GLFW window.");;
         window.set_key_callback(
             |window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers| {
@@ -504,17 +504,12 @@ fn main() {
 
 
         let rs = @RenderSystem::new();
-        gl::ProgramUniform2f(rs.program, rs.window_uniform, window_width as f32, window_height as f32);
-        {
-        let program = rs.program;
-        let window_uniform = rs.window_uniform;
+        let (fb_size_port, fb_size_chan): (Port<(uint,uint)>, Chan<(uint,uint)>) = std::comm::stream();
         window.set_framebuffer_size_callback(
             |_: &glfw::Window, width: int, height: int| {
-                gl::ProgramUniform2f(program, window_uniform, width as f32, height as f32);
-                gl::Viewport(0,0,width as i32,height as i32);
+                fb_size_chan.send((width as uint,height as uint));
             }
         );
-        }
 
         world.systems.push(rs as @System);
 
@@ -529,8 +524,14 @@ fn main() {
             // Poll events
             glfw::poll_events();
 
-            // exDM69 recommends calling glViewport at every frame for some reason
-            // glViewport(0,0, window_width, window_height);
+            while fb_size_port.peek() {
+                let (w,h) = fb_size_port.recv();
+                window_width = w;
+                window_height = h;
+            }
+
+            gl::Viewport(0,0, window_width as GLint, window_height as GLint);
+            gl::ProgramUniform2f(rs.program, rs.window_uniform, window_width as f32, window_height as f32);
             // Clear the screen 
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
