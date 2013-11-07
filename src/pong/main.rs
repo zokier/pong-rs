@@ -45,7 +45,7 @@ struct VertVelocity {
 }
 
 struct SpriteTexture {
-    texture: uint,
+    texture: GLuint,
     texcoords: (uint, uint),
     texsize: (uint, uint)
 }
@@ -226,7 +226,7 @@ impl System for RenderSystem {
                 gl::ProgramUniform4f(self.program, self.color_uniform, sprite.color[0] as f32, sprite.color[1] as f32, sprite.color[2] as f32, sprite.color[3] as f32);
                 match sprite.texture {
                     Some(tex) => {
-                        //gl::BindTexture(GL_TEXTURE_2D, tex.texture);
+                        gl::BindTexture(gl::TEXTURE_2D, tex.texture);
                         let (tex_x, tex_y) = tex.texcoords;
                         let (tex_w, tex_h) = tex.texsize;
                         gl::ProgramUniform4f(self.program, self.texcoords_uniform, tex_x as f32, tex_y as f32, tex_w as f32, tex_h as f32);
@@ -282,8 +282,8 @@ fn new_ball() -> @Components {
         horiz_velocity: Some(@mut HorizVelocity { x: 1.0/60.0 }),
         vert_velocity: Some(@mut VertVelocity { y: 0.0 }),
         sprite: Some(@mut Sprite {
-            x_size: 0.05,
-            y_size: 0.10,
+            x_size: 0.10,
+            y_size: 0.20,
             color: [0.8, 0.7, 0.3, 0.0],
             texture: Some(SpriteTexture {
                 texture: 0,
@@ -416,9 +416,9 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
 impl RenderSystem {
     fn new() -> RenderSystem {
         // Create GLSL shaders
-        let vs_src = std::rt::io::file::open(&std::path::Path::new("main.vs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let vs_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("main.vs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
         let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
-        let fs_src = std::rt::io::file::open(&std::path::Path::new("main.fs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let fs_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("main.fs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
         let fs = compile_shader(fs_src, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs, "out_color");
 
@@ -463,7 +463,7 @@ impl RenderSystem {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
         //load character atlas texture
-        let char_atlas_src = io::read_whole_file(&std::path::Path::new("dina_128x128.gray")).unwrap();
+        let char_atlas_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("dina_128x128.gray"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
         let mut char_atlas_tex: GLuint = 0;
         unsafe {
             gl::GenTextures(1, &mut char_atlas_tex);
