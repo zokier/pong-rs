@@ -50,6 +50,27 @@ struct SpriteTexture {
     texsize: (uint, uint)
 }
 
+// takes single ascii character as a byte as input
+fn texture_from_byte(b: u8) -> SpriteTexture {
+    // 32 == ' ', the first character in atlas
+    let cb: uint = (b as uint) - 32;
+    let x = (cb % 16) * 7;
+    let y = (cb / 16) * 14;
+    SpriteTexture {
+        texture: 0,
+        texcoords: (x, y),
+        texsize: (7, 14)
+    }
+}
+
+fn texture_from_char(c: char) -> SpriteTexture {
+    texture_from_byte(c.to_ascii().to_byte())
+}
+
+fn texture_from_uint(i: uint) -> SpriteTexture {
+    texture_from_byte(((i+0x30) as u8))
+}
+
 struct Sprite {
     x_size: f64,
     y_size: f64,
@@ -289,12 +310,7 @@ fn new_ball() -> @Components {
             x_size: 0.10,
             y_size: 0.20,
             color: [0.8, 0.7, 0.3, 0.0],
-            texture: Some(SpriteTexture {
-                texture: 0,
-                //there should be some better way to define these
-                texcoords: (0, 28),
-                texsize: (7, 14)
-            })
+            texture: Some(texture_from_char('@'))
         }),
         score: None
     }
