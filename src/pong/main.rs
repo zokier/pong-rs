@@ -212,6 +212,7 @@ struct RenderSystem {
     color_uniform: GLint,
     window_uniform: GLint,
     texcoords_uniform: GLint,
+    texenabled_uniform: GLint,
     char_atlas_tex: GLuint
 }
 
@@ -230,8 +231,11 @@ impl System for RenderSystem {
                         let (tex_x, tex_y) = tex.texcoords;
                         let (tex_w, tex_h) = tex.texsize;
                         gl::ProgramUniform4f(self.program, self.texcoords_uniform, tex_x as f32, tex_y as f32, tex_w as f32, tex_h as f32);
+                        gl::ProgramUniform1f(self.program, self.texenabled_uniform, 1.0 as f32);
                     },
-                    None => {}
+                    None => {
+                        gl::ProgramUniform1f(self.program, self.texenabled_uniform, 0.0 as f32);
+                    }
                 }
                 // Draw a rect from the 4 vertices
                 gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
@@ -430,6 +434,7 @@ impl RenderSystem {
         let color_uniform: GLint;
         let window_uniform: GLint;
         let texcoords_uniform: GLint;
+        let texenabled_uniform: GLint;
 
         unsafe {
             position_uniform = "position".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
@@ -437,6 +442,7 @@ impl RenderSystem {
             color_uniform = "color".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             window_uniform = "window".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             texcoords_uniform = "texcoords".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
+            texenabled_uniform = "texenabled".with_c_str(|ptr| gl::GetUniformLocation(program, ptr));
             // Create Vertex Array Object
             gl::GenVertexArrays(1, &mut vao);
             gl::BindVertexArray(vao);
@@ -483,6 +489,7 @@ impl RenderSystem {
             color_uniform: color_uniform,
             window_uniform: window_uniform,
             texcoords_uniform: texcoords_uniform,
+            texenabled_uniform: texenabled_uniform,
             char_atlas_tex: char_atlas_tex
         }
     }
