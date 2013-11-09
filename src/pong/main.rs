@@ -98,6 +98,17 @@ trait GlobalSystem {
     fn process(&self, window: &glfw::Window) -> ();
 }
 
+struct ScoreUpdateSystem {
+    paddle: @Components,
+    counter: @Components
+}
+
+impl GlobalSystem for ScoreUpdateSystem {
+    fn process(&self, _: &glfw::Window) -> () {
+        self.counter.sprite.unwrap().texture = Some(texture_from_uint(self.paddle.score.unwrap().score));
+    }
+}
+
 struct BotInputSystem {
     paddle: @Components,
     ball: @Components
@@ -366,6 +377,25 @@ fn new_background() -> @Components {
     }
 }
 
+fn new_score_counter(side: PaddleSide) -> @Components {
+    let xpos = match side {
+        RIGHT => 2.5,
+        LEFT => 1.5
+    };
+    @Components {
+        position: Some(@mut Position { x: xpos, y: 2.5 }),
+        horiz_velocity: None,
+        vert_velocity: None,
+        sprite: Some(@mut Sprite {
+            x_size: 0.3,
+            y_size: 0.6,
+            color: [1.0, 1.0, 1.0, 0.0],
+            texture: Some(texture_from_char('0'))
+        }),
+        score: None
+    }
+}
+
 
 // OPENGL ETC STUFF
 
@@ -537,6 +567,8 @@ fn main() {
         let left_paddle: @Components = new_paddle(LEFT);
         let right_paddle: @Components = new_paddle(RIGHT);
         let ball: @Components = new_ball();
+        let left_score_counter: @Components = new_score_counter(LEFT);
+        let right_score_counter: @Components = new_score_counter(RIGHT);
         let background: @Components = new_background();
         let background_2: @Components = new_background_2();
         let ms = @MovementSystem;
@@ -546,6 +578,8 @@ fn main() {
         let mut world: World = World::new();
         world.entities.push(background);
         world.entities.push(background_2);
+        world.entities.push(left_score_counter);
+        world.entities.push(right_score_counter);
         world.entities.push(left_paddle);
         world.entities.push(right_paddle);
         world.entities.push(ball);
@@ -594,6 +628,11 @@ fn main() {
 
         let bis = @BotInputSystem { paddle: right_paddle, ball: ball };
         world.global_systems.push(bis as @GlobalSystem);
+
+        let lsus = @ScoreUpdateSystem { paddle: left_paddle, counter: left_score_counter };
+        world.global_systems.push(lsus as @GlobalSystem);
+        let rsus = @ScoreUpdateSystem { paddle: right_paddle, counter: right_score_counter };
+        world.global_systems.push(rsus as @GlobalSystem);
 
         let mut prev_scores = (0,0);
         while !window.should_close() {
