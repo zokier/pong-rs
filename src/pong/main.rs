@@ -83,7 +83,7 @@ struct BotInputSystem {
 }
 
 impl GlobalSystem for BotInputSystem {
-    fn process(&self, window: &glfw::Window) -> () {
+    fn process(&self, _: &glfw::Window) -> () {
         let d = self.ball.position.unwrap().y - self.paddle.position.unwrap().y;
         if std::num::abs(d) > 0.2 {
             if d > 0.0 {
