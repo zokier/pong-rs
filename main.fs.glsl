@@ -7,6 +7,7 @@ uniform float texenabled;
 uniform sampler2DRect tex;
 
 void main() {
-    float alpha = texenabled * (1.0-texture(tex, vert_texcoords).r);
+    // step() is a kludge as GL_NEAREST doesn't seem to work
+    float alpha = step(0.5, texenabled * (1.0-texture(tex, vert_texcoords).r));
     out_color = vec4(0.0, 0.0, 0.0, alpha)+vert_color;
 }

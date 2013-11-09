@@ -492,6 +492,8 @@ impl RenderSystem {
             gl::ActiveTexture(gl::TEXTURE0);
             gl::BindTexture(gl::TEXTURE_RECTANGLE, char_atlas_tex);
             gl::TexImage2D(gl::TEXTURE_RECTANGLE, 0, gl::RED as GLint, 128, 128, 0, gl::RED, gl::UNSIGNED_BYTE, cast::transmute(&char_atlas_src[0]));
+            //TODO why doesn't this work?!
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as GLint);
         }
 
         RenderSystem {
