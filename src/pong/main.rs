@@ -429,7 +429,7 @@ fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = vec::from_elem(len as uint - 1, 0u8);     // subtract 1 to skip the trailing null character
             gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!(str::raw::from_utf8(buf));
+            fail!(str::raw::from_utf8(buf).to_owned());
         }
     }
     shader
@@ -455,7 +455,7 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = vec::from_elem(len as uint - 1, 0u8);     // subtract 1 to skip the trailing null character
             gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
-            fail!(str::raw::from_utf8(buf));
+            fail!(str::raw::from_utf8(buf).to_owned());
         }
     }
     program
