@@ -556,9 +556,7 @@ impl Drop for RenderSystem {
 }
 
 fn main() {
-    do glfw::set_error_callback |_, description| {
-        println!("GLFW Error: {}", description);
-    }
+    glfw::set_error_callback(~ErrorContext);
 
     do glfw::start {
         // initialize game world
@@ -593,18 +591,7 @@ fn main() {
         let mut window_width = 800;
         let mut window_height = 480;
         let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).expect("Failed to create GLFW window.");;
-        window.set_key_callback(
-            |window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers| {
-                if action == glfw::Press {
-                    match key {
-                        glfw::KeyEscape => {
-                            window.set_should_close(true);
-                        },
-                        _ => {}
-                    }
-                }
-            }
-        );
+        window.set_key_callback(~KeyContext);
         window.make_context_current();
 
         // Load the OpenGL function pointers
@@ -612,12 +599,9 @@ fn main() {
 
 
         let rs = @RenderSystem::new();
-        let (fb_size_port, fb_size_chan): (Port<(uint,uint)>, Chan<(uint,uint)>) = std::comm::stream();
-        window.set_framebuffer_size_callback(
-            |_: &glfw::Window, width: int, height: int| {
-                fb_size_chan.send((width as uint,height as uint));
-            }
-        );
+
+        let (fb_size_port, fb_size_chan): (Port<(u32,u32)>, Chan<(u32,u32)>) = std::comm::Chan::new();
+        window.set_framebuffer_size_callback(~FramebufferSizeContext { chan: fb_size_chan });
 
         world.systems.push(rs as @System);
 
@@ -637,10 +621,14 @@ fn main() {
             // Poll events
             glfw::poll_events();
 
-            while fb_size_port.peek() {
-                let (w,h) = fb_size_port.recv();
-                window_width = w;
-                window_height = h;
+            loop {
+                match fb_size_port.try_recv() {
+                    Some((w,h)) => {
+                        window_width = w;
+                        window_height = h;
+                    }
+                    None => break
+                }
             }
 
             gl::Viewport(0,0, window_width as GLint, window_height as GLint);
@@ -660,5 +648,34 @@ fn main() {
             // Swap buffers
             window.swap_buffers();
         }
+    }
+}
+
+struct ErrorContext;
+impl glfw::ErrorCallback for ErrorContext {
+    fn call(&self, _: glfw::Error, description: ~str) {
+        println!("GLFW Error: {:s}", description);
+    }
+}
+
+struct KeyContext;
+impl glfw::KeyCallback for KeyContext {
+    fn call(&self, window: &glfw::Window, key: glfw::Key, scancode: libc::c_int, action: glfw::Action, mods: glfw::Modifiers) {
+        match (key, action) {
+            (glfw::KeyEscape, glfw::Press) => {
+                window.set_should_close(true);
+            }
+
+            _ => ()
+        }
+    }
+}
+
+struct FramebufferSizeContext {
+    chan: Chan<(u32,u32)>
+}
+impl glfw::FramebufferSizeCallback for FramebufferSizeContext {
+    fn call(&self, _: &glfw::Window, width: i32, height: i32) {
+        self.chan.send((width as u32,height as u32));
     }
 }
