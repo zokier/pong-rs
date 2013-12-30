@@ -26,8 +26,6 @@ use std::ptr;
 use std::str;
 use std::vec;
 
-use std::rt::io::Reader;
-
 use gl::types::*;
 
 // COMPONENT DEFINITIONS
@@ -466,9 +464,9 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
 impl RenderSystem {
     fn new() -> RenderSystem {
         // Create GLSL shaders
-        let vs_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("main.vs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let vs_src = std::io::fs::File::open_mode(&std::path::Path::new("main.vs.glsl"), std::io::Open, std::io::Read).unwrap().read_to_end();
         let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
-        let fs_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("main.fs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let fs_src = std::io::fs::File::open_mode(&std::path::Path::new("main.fs.glsl"), std::io::Open, std::io::Read).unwrap().read_to_end();
         let fs = compile_shader(fs_src, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs, "out_color");
 
@@ -515,7 +513,7 @@ impl RenderSystem {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
         //load character atlas texture
-        let char_atlas_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("dina_128x128.gray"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let char_atlas_src = std::io::fs::File::open_mode(&std::path::Path::new("dina_128x128.gray"), std::io::Open, std::io::Read).unwrap().read_to_end();
         let mut char_atlas_tex: GLuint = 0;
         unsafe {
             gl::GenTextures(1, &mut char_atlas_tex);
