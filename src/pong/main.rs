@@ -416,7 +416,7 @@ fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
         // Attempt to compile the shader
         //transmute is used here because `as` causes ICE
         //wait a sec, is `src` null-terminated properly?
-        gl::ShaderSource(shader, 1, std::cast::transmute(std::ptr::to_unsafe_ptr(&std::vec::raw::to_ptr(src))), ptr::null());
+        gl::ShaderSource(shader, 1, std::cast::transmute(std::ptr::to_unsafe_ptr(&src.as_ptr())), ptr::null());
         gl::CompileShader(shader);
 
         // Get the compile status
@@ -428,7 +428,7 @@ fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
             let mut len = 0;
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = vec::from_elem(len as uint - 1, 0u8);     // subtract 1 to skip the trailing null character
-            gl::GetShaderInfoLog(shader, len, ptr::mut_null(), vec::raw::to_mut_ptr(buf) as *mut GLchar);
+            gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
             fail!(str::raw::from_utf8(buf));
         }
     }
@@ -454,7 +454,7 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
             let mut len: GLint = 0;
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = vec::from_elem(len as uint - 1, 0u8);     // subtract 1 to skip the trailing null character
-            gl::GetProgramInfoLog(program, len, ptr::mut_null(), vec::raw::to_mut_ptr(buf) as *mut GLchar);
+            gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
             fail!(str::raw::from_utf8(buf));
         }
     }
