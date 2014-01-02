@@ -80,32 +80,37 @@ struct Sprite {
     texture: Option<SpriteTexture>
 }
 
-struct Score {
-    score: uint
-}
-
 struct Components {
     position: Option<@mut Position>,
     horiz_velocity: Option<@mut HorizVelocity>,
     vert_velocity: Option<@mut VertVelocity>,
     sprite: Option<@mut Sprite>,
-    score: Option<@mut Score>,
 }
 
 
 //GLOBAL SYSTEM DEFINITIONS
 trait GlobalSystem {
-    fn process(&self, window: &glfw::Window) -> ();
+    fn process(&mut self, window: &glfw::Window) -> ();
 }
 
 struct ScoreUpdateSystem {
     paddle: @Components,
-    counter: @Components
+    counter: @Components,
+    score: uint,
+    port: Port<uint>
 }
 
 impl GlobalSystem for ScoreUpdateSystem {
-    fn process(&self, _: &glfw::Window) -> () {
-        self.counter.sprite.unwrap().texture = Some(texture_from_uint(self.paddle.score.unwrap().score));
+    fn process(&mut self, _: &glfw::Window) -> () {
+        loop {
+            match self.port.try_recv() {
+                Some(i) => {
+                    self.score += i;
+                }
+                None => break
+            }
+        }
+        self.counter.sprite.unwrap().texture = Some(texture_from_uint(self.score));
     }
 }
 
@@ -115,7 +120,7 @@ struct BotInputSystem {
 }
 
 impl GlobalSystem for BotInputSystem {
-    fn process(&self, _: &glfw::Window) -> () {
+    fn process(&mut self, _: &glfw::Window) -> () {
         let d = self.ball.position.unwrap().y - self.paddle.position.unwrap().y;
         if std::num::abs(d) > 0.2 {
             if d > 0.0 {
@@ -134,7 +139,7 @@ struct KeyboardInputSystem {
 }
 
 impl GlobalSystem for KeyboardInputSystem {
-    fn process(&self, window: &glfw::Window) -> () {
+    fn process(&mut self, window: &glfw::Window) -> () {
         let mut dir = 0.0;
         if window.get_key(glfw::KeyA) == glfw::Press {
             dir += 1.0;
@@ -191,44 +196,65 @@ impl System for EdgeCollisionSystem {
     }
 }
 
+struct ScoreCollisionSystem {
+    left_chan: Chan<uint>,
+    right_chan: Chan<uint>
+}
+
+impl System for ScoreCollisionSystem {
+    fn process(&self, entity: @Components) -> () {
+        match (entity.position, entity.vert_velocity, entity.horiz_velocity) {
+            (Some(pos), Some(vvel), Some(hvel)) => {
+                if pos.x > 4.0 {
+                    self.left_chan.send(1);
+                } else if pos.x < 0.0 {
+                    self.right_chan.send(1);
+                } else {
+                    return
+                }
+                pos.x = 2.0;
+                pos.y = 1.5;
+                hvel.x *= -1.0;
+                vvel.y = 0.0;
+            },
+            (_, _, _) => () 
+        }
+    }
+}
+
+
+
+//AABB collision detection
+fn doEntitiesCollide(a: @Components, b: @Components) -> bool {
+    if std::managed::ptr_eq(a,b) {
+        false
+    } else {
+        match (a.position, a.sprite, b.position, b.sprite) {
+            (Some(a_pos), Some(a_spr), Some(b_pos), Some(b_spr)) => {
+                (std::num::abs(a_pos.x - b_pos.x) * 2.0 <= (a_spr.x_size + b_spr.x_size)) 
+                    && (std::num::abs(a_pos.y - b_pos.y) * 2.0 <= (a_spr.y_size + b_spr.y_size))
+            },
+            (_, _, _, _) => false
+        }
+    }
+}
+
 struct PaddleCollisionSystem {
-    left_paddle: @Components,
-    right_paddle: @Components,
+    paddle: @Components,
 }
 
 impl System for PaddleCollisionSystem {
     fn process(&self, entity: @Components) -> () {
-        //TODO use a hitbox or something instead of sprite
-        match (entity.position, entity.horiz_velocity, entity.vert_velocity, entity.sprite) {
-            (Some(pos), Some(hvel), Some(vvel), Some(spr)) => {
-                let mut paddles: Option<(@Components, @Components)> = None;
-                if (pos.x+(spr.x_size)/2.0) >= (self.right_paddle.position.unwrap().x-(self.right_paddle.sprite.unwrap().x_size)/2.0) {
-                    paddles = Some((self.right_paddle, self.left_paddle));
-                } 
-                else if (pos.x-(spr.x_size)/2.0) <= (self.left_paddle.position.unwrap().x+(self.left_paddle.sprite.unwrap().x_size)/2.0) {
-                    paddles = Some((self.left_paddle, self.right_paddle));
-                }
-                match paddles {
-                    Some((paddle_a, paddle_b)) => {
-                        let paddle_distance = pos.y - paddle_a.position.unwrap().y;
-                        let paddle_height = paddle_a.sprite.unwrap().y_size/2.0;
-                        if std::num::abs(paddle_distance) < paddle_height {
-                            hvel.x *= -1.0;
-                            vvel.y = 0.5*hvel.x*std::num::sinh(3.14*paddle_distance/paddle_height);
-                        }
-                        else {
-                            // SCORE FOR OTHER PLAYER
-                            paddle_b.score.unwrap().score += 1;
-                            pos.x = 2.0;
-                            pos.y = 1.5;
-                            hvel.x *= -1.0;
-                            vvel.y = 0.0;
-                        }
-                    },
-                    None => {}
-                }
-            },
-            (_, _, _, _) => ()
+        if doEntitiesCollide(self.paddle, entity) {
+            match (entity.horiz_velocity, entity.vert_velocity, entity.position) {
+                (Some(hvel), Some(vvel), Some(pos)) => {
+                    let paddle_distance = pos.y - self.paddle.position.unwrap().y;
+                    let paddle_height = self.paddle.sprite.unwrap().y_size/2.0;
+                    hvel.x *= -1.0;
+                    vvel.y = 0.5*hvel.x*std::num::sinh(3.14*paddle_distance/paddle_height);
+                },
+                (_, _, _) => ()
+            }
         }
     }
 }
@@ -284,7 +310,7 @@ impl System for RenderSystem {
 struct World {
     entities: ~[@Components],
     systems: ~[@System],
-    global_systems: ~[@GlobalSystem]
+    global_systems: ~[@mut GlobalSystem]
 }
 
 impl World {
@@ -323,7 +349,6 @@ fn new_ball() -> @Components {
             color: [0.8, 0.7, 0.3, 0.0],
             texture: Some(texture_from_char('@'))
         }),
-        score: None
     }
 }
 
@@ -342,7 +367,6 @@ fn new_paddle(side: PaddleSide) -> @Components {
             color: [xpos/4.0, 1.0-(xpos/4.0), 0.3, 1.0],
             texture: None
         }),
-        score: Some(@mut Score { score: 0 } )
     }
 }
 
@@ -357,7 +381,6 @@ fn new_background_2() -> @Components {
             color: [0.0, 0.0, 0.0, 0.3],
             texture: None
         }),
-        score: None
     }
 }
 
@@ -373,7 +396,6 @@ fn new_background() -> @Components {
             color: [0.45, 0.4, 1.0, 1.0],
             texture: None
         }),
-        score: None
     }
 }
 
@@ -392,7 +414,6 @@ fn new_score_counter(side: PaddleSide) -> @Components {
             color: [1.0, 1.0, 1.0, 0.0],
             texture: Some(texture_from_char('0'))
         }),
-        score: None
     }
 }
 
@@ -571,7 +592,11 @@ fn main() {
         let background_2: @Components = new_background_2();
         let ms = @MovementSystem;
         let es = @EdgeCollisionSystem;
-        let ps = @PaddleCollisionSystem{ right_paddle: right_paddle, left_paddle: left_paddle };
+        let (left_score_port, left_score_chan): (Port<uint>, Chan<uint>) = std::comm::Chan::new();
+        let (right_score_port, right_score_chan): (Port<uint>, Chan<uint>) = std::comm::Chan::new();
+        let ss = @ScoreCollisionSystem { left_chan: left_score_chan, right_chan: right_score_chan };
+        let lps = @PaddleCollisionSystem{ paddle: left_paddle };
+        let rps = @PaddleCollisionSystem{ paddle: right_paddle };
 
         let mut world: World = World::new();
         world.entities.push(background);
@@ -583,7 +608,9 @@ fn main() {
         world.entities.push(ball);
         world.systems.push(ms as @System);
         world.systems.push(es as @System);
-        world.systems.push(ps as @System);
+        world.systems.push(ss as @System);
+        world.systems.push(lps as @System);
+        world.systems.push(rps as @System);
 
         // Choose a GL profile that is compatible with OS X 10.7+
         glfw::window_hint::context_version(3, 2);
@@ -607,18 +634,18 @@ fn main() {
 
         world.systems.push(rs as @System);
 
-        let kbs = @KeyboardInputSystem { paddle: left_paddle };
-        world.global_systems.push(kbs as @GlobalSystem);
+        let kbs = @mut KeyboardInputSystem { paddle: left_paddle };
+        world.global_systems.push(kbs as @mut GlobalSystem);
 
-        let bis = @BotInputSystem { paddle: right_paddle, ball: ball };
-        world.global_systems.push(bis as @GlobalSystem);
+        let bis = @mut BotInputSystem { paddle: right_paddle, ball: ball };
+        world.global_systems.push(bis as @mut GlobalSystem);
 
-        let lsus = @ScoreUpdateSystem { paddle: left_paddle, counter: left_score_counter };
-        world.global_systems.push(lsus as @GlobalSystem);
-        let rsus = @ScoreUpdateSystem { paddle: right_paddle, counter: right_score_counter };
-        world.global_systems.push(rsus as @GlobalSystem);
+        // score update systems need to be mutable as they maintain the score within
+        let lsus = @mut ScoreUpdateSystem { paddle: left_paddle, counter: left_score_counter, score: 0, port: left_score_port };
+        world.global_systems.push(lsus as @mut GlobalSystem);
+        let rsus = @mut ScoreUpdateSystem { paddle: right_paddle, counter: right_score_counter, score: 0, port: right_score_port };
+        world.global_systems.push(rsus as @mut GlobalSystem);
 
-        let mut prev_scores = (0,0);
         while !window.should_close() {
             // Poll events
             glfw::poll_events();
@@ -639,13 +666,9 @@ fn main() {
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
 
+
             // process game world
             world.process(&window);
-            let new_scores = (left_paddle.score.unwrap().score, right_paddle.score.unwrap().score);
-            if new_scores != prev_scores {
-                println!("{:?}", new_scores);
-                prev_scores = new_scores;
-            }
 
             // Swap buffers
             window.swap_buffers();
