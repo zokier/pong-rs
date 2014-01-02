@@ -24,6 +24,6 @@ void main() {
     gl_Position = vec4(out_vert, 0.0, 1.0);
     vert_color = color;
     //this is the hackiest thing in a long time
-    vert_texcoords = vec2(texcoords.x + (texcoords.z*(vertex.x + 0.5)), texcoords.y + (texcoords.w*(vertex.y + 0.5)));
+    vert_texcoords = vec2(texcoords.x + (texcoords.z*(vertex.x + 0.5)), texcoords.y + (texcoords.w*(1.0 - (vertex.y + 0.5))));
 }
 
