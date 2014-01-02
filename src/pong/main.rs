@@ -26,8 +26,6 @@ use std::ptr;
 use std::str;
 use std::vec;
 
-use std::rt::io::Reader;
-
 use gl::types::*;
 
 // COMPONENT DEFINITIONS
@@ -418,7 +416,7 @@ fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
         // Attempt to compile the shader
         //transmute is used here because `as` causes ICE
         //wait a sec, is `src` null-terminated properly?
-        gl::ShaderSource(shader, 1, std::cast::transmute(std::ptr::to_unsafe_ptr(&std::vec::raw::to_ptr(src))), ptr::null());
+        gl::ShaderSource(shader, 1, std::cast::transmute(std::ptr::to_unsafe_ptr(&src.as_ptr())), ptr::null());
         gl::CompileShader(shader);
 
         // Get the compile status
@@ -430,8 +428,8 @@ fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
             let mut len = 0;
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = vec::from_elem(len as uint - 1, 0u8);     // subtract 1 to skip the trailing null character
-            gl::GetShaderInfoLog(shader, len, ptr::mut_null(), vec::raw::to_mut_ptr(buf) as *mut GLchar);
-            fail!(str::raw::from_utf8(buf));
+            gl::GetShaderInfoLog(shader, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
+            fail!(str::raw::from_utf8(buf).to_owned());
         }
     }
     shader
@@ -456,8 +454,8 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
             let mut len: GLint = 0;
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf = vec::from_elem(len as uint - 1, 0u8);     // subtract 1 to skip the trailing null character
-            gl::GetProgramInfoLog(program, len, ptr::mut_null(), vec::raw::to_mut_ptr(buf) as *mut GLchar);
-            fail!(str::raw::from_utf8(buf));
+            gl::GetProgramInfoLog(program, len, ptr::mut_null(), buf.as_mut_ptr() as *mut GLchar);
+            fail!(str::raw::from_utf8(buf).to_owned());
         }
     }
     program
@@ -466,9 +464,9 @@ fn link_program(vs: GLuint, fs: GLuint, out_color: &str) -> GLuint {
 impl RenderSystem {
     fn new() -> RenderSystem {
         // Create GLSL shaders
-        let vs_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("main.vs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let vs_src = std::io::fs::File::open_mode(&std::path::Path::new("main.vs.glsl"), std::io::Open, std::io::Read).unwrap().read_to_end();
         let vs = compile_shader(vs_src, gl::VERTEX_SHADER);
-        let fs_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("main.fs.glsl"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let fs_src = std::io::fs::File::open_mode(&std::path::Path::new("main.fs.glsl"), std::io::Open, std::io::Read).unwrap().read_to_end();
         let fs = compile_shader(fs_src, gl::FRAGMENT_SHADER);
         let program = link_program(vs, fs, "out_color");
 
@@ -515,7 +513,7 @@ impl RenderSystem {
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 
         //load character atlas texture
-        let char_atlas_src = std::rt::io::fs::File::open_mode(&std::path::Path::new("dina_128x128.gray"), std::rt::io::Open, std::rt::io::Read).unwrap().read_to_end();
+        let char_atlas_src = std::io::fs::File::open_mode(&std::path::Path::new("dina_128x128.gray"), std::io::Open, std::io::Read).unwrap().read_to_end();
         let mut char_atlas_tex: GLuint = 0;
         unsafe {
             gl::GenTextures(1, &mut char_atlas_tex);
@@ -558,9 +556,7 @@ impl Drop for RenderSystem {
 }
 
 fn main() {
-    do glfw::set_error_callback |_, description| {
-        println!("GLFW Error: {}", description);
-    }
+    glfw::set_error_callback(~ErrorContext);
 
     do glfw::start {
         // initialize game world
@@ -595,18 +591,7 @@ fn main() {
         let mut window_width = 800;
         let mut window_height = 480;
         let window = glfw::Window::create(window_width, window_height, "Pong", glfw::Windowed).expect("Failed to create GLFW window.");;
-        window.set_key_callback(
-            |window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers| {
-                if action == glfw::Press {
-                    match key {
-                        glfw::KeyEscape => {
-                            window.set_should_close(true);
-                        },
-                        _ => {}
-                    }
-                }
-            }
-        );
+        window.set_key_callback(~KeyContext);
         window.make_context_current();
 
         // Load the OpenGL function pointers
@@ -614,12 +599,9 @@ fn main() {
 
 
         let rs = @RenderSystem::new();
-        let (fb_size_port, fb_size_chan): (Port<(uint,uint)>, Chan<(uint,uint)>) = std::comm::stream();
-        window.set_framebuffer_size_callback(
-            |_: &glfw::Window, width: int, height: int| {
-                fb_size_chan.send((width as uint,height as uint));
-            }
-        );
+
+        let (fb_size_port, fb_size_chan): (Port<(u32,u32)>, Chan<(u32,u32)>) = std::comm::Chan::new();
+        window.set_framebuffer_size_callback(~FramebufferSizeContext { chan: fb_size_chan });
 
         world.systems.push(rs as @System);
 
@@ -639,10 +621,14 @@ fn main() {
             // Poll events
             glfw::poll_events();
 
-            while fb_size_port.peek() {
-                let (w,h) = fb_size_port.recv();
-                window_width = w;
-                window_height = h;
+            loop {
+                match fb_size_port.try_recv() {
+                    Some((w,h)) => {
+                        window_width = w;
+                        window_height = h;
+                    }
+                    None => break
+                }
             }
 
             gl::Viewport(0,0, window_width as GLint, window_height as GLint);
@@ -662,5 +648,34 @@ fn main() {
             // Swap buffers
             window.swap_buffers();
         }
+    }
+}
+
+struct ErrorContext;
+impl glfw::ErrorCallback for ErrorContext {
+    fn call(&self, _: glfw::Error, description: ~str) {
+        println!("GLFW Error: {:s}", description);
+    }
+}
+
+struct KeyContext;
+impl glfw::KeyCallback for KeyContext {
+    fn call(&self, window: &glfw::Window, key: glfw::Key, scancode: libc::c_int, action: glfw::Action, mods: glfw::Modifiers) {
+        match (key, action) {
+            (glfw::KeyEscape, glfw::Press) => {
+                window.set_should_close(true);
+            }
+
+            _ => ()
+        }
+    }
+}
+
+struct FramebufferSizeContext {
+    chan: Chan<(u32,u32)>
+}
+impl glfw::FramebufferSizeCallback for FramebufferSizeContext {
+    fn call(&self, _: &glfw::Window, width: i32, height: i32) {
+        self.chan.send((width as u32,height as u32));
     }
 }
