@@ -19,6 +19,7 @@
 
 extern mod glfw;
 extern mod gl;
+extern mod native;
 
 use std::libc;
 
@@ -408,7 +409,7 @@ static VERTEX_DATA: [GLfloat, ..8] = [
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    std::rt::start_on_main_thread(argc, argv, main)
+    native::start(argc, argv, main)
 }
 
 fn compile_shader(src: &[u8], ty: GLenum) -> GLuint {
