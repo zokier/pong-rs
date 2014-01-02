@@ -1,5 +1,5 @@
-// Copyright 2013-2014 Torste Aikio and others. 
-// See AUTHORS file for details. 
+// Copyright 2013-2014 Torste Aikio and others.
+// See AUTHORS file for details.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,7 +87,6 @@ struct Components {
     sprite: Option<@mut Sprite>,
 }
 
-
 //GLOBAL SYSTEM DEFINITIONS
 trait GlobalSystem {
     fn process(&mut self, window: &glfw::Window) -> ();
@@ -160,12 +159,12 @@ struct MovementSystem;
 
 impl System for MovementSystem {
     fn process(&self, entity: @Components) -> () {
-        match entity.position { 
+        match entity.position {
             Some(pos) => {
                 match entity.vert_velocity {
                     Some(v) => pos.y += v.y,
                     None => ()
-                } 
+                }
                 match entity.horiz_velocity {
                     Some(v) => pos.x += v.x,
                     None => ()
@@ -191,7 +190,7 @@ impl System for EdgeCollisionSystem {
                     pos.y = spr.y_size/2.0;
                 }
             },
-            (_, _, _) => () 
+            (_, _, _) => ()
         }
     }
 }
@@ -217,12 +216,10 @@ impl System for ScoreCollisionSystem {
                 hvel.x *= -1.0;
                 vvel.y = 0.0;
             },
-            (_, _, _) => () 
+            (_, _, _) => ()
         }
     }
 }
-
-
 
 //AABB collision detection
 fn doEntitiesCollide(a: @Components, b: @Components) -> bool {
@@ -231,7 +228,7 @@ fn doEntitiesCollide(a: @Components, b: @Components) -> bool {
     } else {
         match (a.position, a.sprite, b.position, b.sprite) {
             (Some(a_pos), Some(a_spr), Some(b_pos), Some(b_spr)) => {
-                (std::num::abs(a_pos.x - b_pos.x) * 2.0 <= (a_spr.x_size + b_spr.x_size)) 
+                (std::num::abs(a_pos.x - b_pos.x) * 2.0 <= (a_spr.x_size + b_spr.x_size))
                     && (std::num::abs(a_pos.y - b_pos.y) * 2.0 <= (a_spr.y_size + b_spr.y_size))
             },
             (_, _, _, _) => false
@@ -331,7 +328,6 @@ impl World {
 }
 
 
-
 //ENTITY CONSTRUCTORS
 enum PaddleSide {
     RIGHT,
@@ -383,7 +379,6 @@ fn new_background_2() -> @Components {
         }),
     }
 }
-
 
 fn new_background() -> @Components {
     @Components {
@@ -495,7 +490,7 @@ impl RenderSystem {
 
         let mut vao = 0;
         let mut vbo = 0;
-        
+
         let position_uniform: GLint;
         let scale_uniform: GLint;
         let color_uniform: GLint;
@@ -626,7 +621,6 @@ fn main() {
         // Load the OpenGL function pointers
         gl::load_with(glfw::get_proc_address);
 
-
         let rs = @RenderSystem::new();
 
         let (fb_size_port, fb_size_chan): (Port<(u32,u32)>, Chan<(u32,u32)>) = std::comm::Chan::new();
@@ -662,10 +656,9 @@ fn main() {
 
             gl::Viewport(0,0, window_width as GLint, window_height as GLint);
             gl::ProgramUniform2f(rs.program, rs.window_uniform, window_width as f32, window_height as f32);
-            // Clear the screen 
+            // Clear the screen
             gl::ClearColor(0.8, 0.8, 0.8, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
-
 
             // process game world
             world.process(&window);
@@ -699,6 +692,7 @@ impl glfw::KeyCallback for KeyContext {
 struct FramebufferSizeContext {
     chan: Chan<(u32,u32)>
 }
+
 impl glfw::FramebufferSizeCallback for FramebufferSizeContext {
     fn call(&self, _: &glfw::Window, width: i32, height: i32) {
         self.chan.send((width as u32,height as u32));
