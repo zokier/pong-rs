@@ -1,4 +1,5 @@
-// Copyright 2013 Torste Aikio and gl-rs developers. 
+// Copyright 2013-2014 Torste Aikio and others. 
+// See AUTHORS file for details. 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
